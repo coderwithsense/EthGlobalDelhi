@@ -1,7 +1,7 @@
 CIRCUIT_NAME = circuit-wasm-pom
 NPM ?= pnpm
 
-all: build contracts/Groth16Verifier.sol
+all: contracts/Groth16Verifier.sol build
 
 build compile:
 	$(NPM) hardhat compile

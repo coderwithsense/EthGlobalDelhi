@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import {IMTPoseidon, IMTPoseidon_levels, Poseidon2} from './IMT/IMTPoseidon.sol';
 import {Groth16Verifier} from './Groth16Verifier.sol';
+import {Clones} from './Clones.sol';
 
 contract Registry {
 
@@ -80,18 +81,28 @@ contract Registry {
         });
     }
 
-    function isZKProofValid(ZKProof calldata proof, uint256 merkleRoot, uint256 fieldIndex, uint8 op, uint256 value)
+    function isZKProofValid(
+        ZKProof calldata proof,
+        uint256 nullifier,
+        address contractAddr,
+        uint256 merkleRoot,
+        uint256 fieldIndex,
+        uint8 op,
+        uint256 value
+    )
         public view
         returns (bool)
     {
         require( fieldIndex < nFields, "field!" );
         require( op < 3, "op!" );        
         require( roots[merkleRoot] != false, "root404!" );
-        uint256[4] memory pubSignals;
-        pubSignals[0] = merkleRoot;
-        pubSignals[1] = fieldIndex;
-        pubSignals[2] = op;
-        pubSignals[3] = value;
+        uint256[6] memory pubSignals;
+        pubSignals[0] = nullifier;
+        pubSignals[1] = uint256(uint160(contractAddr));
+        pubSignals[2] = merkleRoot;
+        pubSignals[3] = fieldIndex;
+        pubSignals[4] = op;
+        pubSignals[5] = value;
         return verifier.verifyProof(proof.A, proof.B, proof.C, pubSignals);
     }
 
