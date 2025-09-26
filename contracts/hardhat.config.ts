@@ -5,6 +5,8 @@ import "@nomicfoundation/hardhat-verify";
 import '@typechain/hardhat';
 import { HardhatUserConfig } from 'hardhat/config';
 
+import './tasks/gen_verifier';
+
 const config: HardhatUserConfig = {
   networks: {
     hardhat: {

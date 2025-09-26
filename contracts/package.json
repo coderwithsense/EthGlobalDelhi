@@ -38,6 +38,7 @@
     "ejs": "^3.1.6",
     "hardhat": "^2.19.4",
     "hardhat-tracer": "^3.1.0",
+    "snarkjs": "^0.7.5",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
     "typescript": "^5.3.3"
