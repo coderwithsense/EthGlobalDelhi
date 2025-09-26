@@ -19,7 +19,7 @@ export async function signInWithNfc() {
     const cardInfo = await execHaloCmdWeb({ name: "get_pkeys", keyNo: 1 });
     const address = cardInfo.etherAddresses?.["1"];
     if (!address) throw new Error("Could not find Ethereum address on the card.");
-x
+
     // Step 2: Use a constant message
     const message = "Authenticating the user!";
 
