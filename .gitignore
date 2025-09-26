@@ -1,0 +1,17 @@
+.wget-hsts
+.rustup
+.cargo
+.config
+.cache/
+.local/
+.python_history
+old
+stuff
+.gitconfig
+.vscode-server
+.ssh
+.dotnet
+.gnupg
+.npm
+pnpm-lock.yaml
+node_modules
