@@ -26,7 +26,8 @@ export default function LoginPage() {
 
       // Step 2: Compute secret hash from signature
       setLoadingMessage("Checking user registration...");
-      const secretHash = ethers.keccak256(ethers.toUtf8Bytes(signature));
+      const secretHash = ethers.keccak256(ethers.toUtf8Bytes(address));
+      alert(signature);
       console.log("SecretHash:", secretHash);
 
       // Step 3: Query registry
