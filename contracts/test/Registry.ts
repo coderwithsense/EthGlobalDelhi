@@ -3,6 +3,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { poseidon } from '@iden3/js-crypto';
+import { main as wasm_main, process_string } from 'circuit-wasm-pom-nodejs';
 
 function hashSecret(secret:bigint) {
     return poseidon.hash([secret]);
@@ -34,6 +35,16 @@ function encryptFields(secret:bigint, fields:bigint[]) {
     return encryptedFields;
 }
 
+interface UserT {
+    idx: number,
+    secret: bigint,
+    secretHash: bigint,
+    fields: bigint[],
+    fieldKeys: bigint[],
+    encryptedFields: bigint[],
+    proof: bigint[] | null
+}
+
 function createUser(nFields:number) {
     const secret = poseidon.F.random();
     const secretHash = hashSecret(secret);
@@ -49,11 +60,16 @@ function createUser(nFields:number) {
         fields,
         fieldKeys,
         encryptedFields,
-    }
+        proof: null
+    } as UserT;
 }
 
 describe('Registry', () => {
+    before(async () => {
+        wasm_main();
+    });
     it('Works?', async () => {
+        const nFields = 4;
         const pf = await ethers.getContractFactory('Poseidon2');
         const p = await pf.deploy();
         await p.waitForDeployment();
@@ -73,5 +89,21 @@ describe('Registry', () => {
         }});
         const r = await rf.deploy(await g.getAddress(), await e.getAddress());
         await r.waitForDeployment();
+
+        const users:UserT[] = [];
+        for( let i = 0; i < 3; i++ ) {
+            const u = createUser(nFields);
+            u.idx = i;
+            users.push(u);
+        }
+
+        for( const u of users ) {
+            await r.register(u.secretHash, u.encryptedFields as any)
+        }
+
+        for( const u of users ) {
+            const [root, proof] = await r.getProof(u.idx);
+            u.proof = proof;
+        }
     });
 });

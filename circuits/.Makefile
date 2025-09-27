@@ -14,7 +14,7 @@ WASMPACK_FLAGS = --release --no-opt
 PKG_NAME ?= circuit
 CIRCUIT_NAME = circuit
 
-all: deps compile-circuit trusted-setup wasm-pack rayon
+all: deps compile-circuit trusted-setup wasm-pack wasm-pack-node rayon
 
 .PRECIOUS: build/%.graph build/%.r1cs build/%.sym
 build/%.graph build/%.r1cs build/%.sym: %.circom $(BUILD_CIRCUIT)
@@ -45,6 +45,11 @@ compile-circuit: build/$(CIRCUIT_NAME).r1cs build/$(CIRCUIT_NAME).graph
 trusted-setup: build/$(CIRCUIT_NAME).ark-pkey
 
 src/lib.rs: Cargo.toml compile-circuit
+
+.PRECIOUS: pkg-node/%.js
+pkg-nodejs/$(PKG_NAME).js wasm-pack-node: src/lib.rs
+	RUSTFLAGS='--cfg getrandom_backend="wasm_js"' wasm-pack build $(WASMPACK_FLAGS) --target nodejs --out-dir pkg-nodejs/ --out-name $(PKG_NAME)_nodejs
+	sed -i 's/"name": "\([^"]*\)"/"name": "\1-nodejs"/' pkg-nodejs/package.json
 
 .PRECIOUS: pkg/%.js
 pkg/$(PKG_NAME).js wasm-pack: src/lib.rs

@@ -10,6 +10,9 @@
     "sourceMap": true,
     "strict": true,
     "target": "es2020",
-    "outDir": "lib/esm"
+    "outDir": "lib/esm",
+    "paths": {
+      "circuit-wasm-pom-nodejs": ["../circuits/circuit-wasm-pom/pkg-nodejs"]
+    }
   }
 }
