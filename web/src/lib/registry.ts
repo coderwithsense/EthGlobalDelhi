@@ -36,18 +36,19 @@ export async function userExists(secretHash: bigint | string): Promise<boolean> 
 }
 
 
-// --- Payload Preparation Functions ---
-
 /**
  * Prepares the transaction payload for the `register` function.
  * This does NOT send the transaction.
  * @param secretHash - The user's secret hash.
- * @param encryptedFields - An array of 4 encrypted fields.
+ * @param encryptedFields - An array of exactly 6 encrypted fields (uint256).
  * @returns An object containing the transaction data payload.
  */
-export async function prepareRegisterPayload(secretHash: bigint | string, encryptedFields: (bigint | string)[]) {
-    if (encryptedFields.length !== 4) {
-        throw new Error("encryptedFields must be an array of exactly 4 elements.");
+export async function prepareRegisterPayload(
+    secretHash: bigint | string,
+    encryptedFields: (bigint | string)[]
+) {
+    if (encryptedFields.length !== 6) {
+        throw new Error("encryptedFields must be an array of exactly 6 elements.");
     }
 
     const populatedTx = await registryContract.register.populateTransaction(
@@ -57,6 +58,7 @@ export async function prepareRegisterPayload(secretHash: bigint | string, encryp
 
     return populatedTx;
 }
+
 
 /**
  * A type definition for the EventInfo struct to ensure type safety.

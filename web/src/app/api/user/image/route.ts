@@ -47,7 +47,9 @@ export async function POST(request: NextRequest) {
 
         // Generate unique filename
         const extension = image.name.split('.').pop();
-        const filename = `${userId}_${Date.now()}.${extension}`;
+        // const filename = `${userId}_${Date.now()}.${extension}`;
+        // make the filename as a random 10 digit number to avoid collisions
+        const filename = `${Math.floor(1000000000 + Math.random() * 9000000000)}.${extension}`;
         const filepath = path.join(uploadDir, filename);
 
         // Save file
