@@ -15,29 +15,28 @@ import { stringifyBigInts } from "./utils";
 
 // 👉 Sign-in flow (static message)
 export async function signInWithNfc() {
-    // Step 1: Get card address
-    const cardInfo = await execHaloCmdWeb({ name: "get_pkeys", keyNo: 1 });
-    const address = cardInfo.etherAddresses?.["1"];
-    if (!address) throw new Error("Could not find Ethereum address on the card.");
-
     // Step 2: Use a constant message
     const message = "Authenticating the user!";
 
     // Step 3: Hash message (EIP-191 prefix handled by ethers)
     const digest = hashMessage(message).substring(2);
-
+    
     // Step 4: Ask NFC card to sign
     const signResult = await execHaloCmdWeb({
         name: "sign",
         keyNo: 1,
         digest,
-    });
+    });    
+
+    const address = signResult.etherAddress;
 
     const signature = Signature.from({
         r: "0x" + signResult.signature.raw.r,
         s: "0x" + signResult.signature.raw.s,
         v: signResult.signature.raw.v,
     }).serialized;
+
+    alert(`Sig: ${signature} - ${JSON.stringify(signResult)}`);
 
     // Step 5: Verify locally (optional check)
     const recovered = verifyMessage(message, signature);
