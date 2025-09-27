@@ -22,9 +22,22 @@ export default function LoginPage() {
       // Save in Zustand Auth store
       setAuth(address, signature);
 
-      // Optional: persist to localStorage (if you want session survive reloads)
+      // Create fake user data until /user API is ready
+      const fakeUser = {
+        userId: address,
+        name: "Test User",
+        dateOfBirth: 915148800, // 1999-01-01
+        gender: 0,
+        city: "Delhi",
+        country: "India",
+        createdAt: Date.now() / 1000,
+        updatedAt: Date.now() / 1000,
+        imageUrl: null,
+      };
+
+      // Persist to localStorage
       localStorage.setItem("authenticated", "true");
-      localStorage.setItem("user", JSON.stringify({ address, signature }));
+      localStorage.setItem("user", JSON.stringify(fakeUser));
 
       // Redirect
       router.push("/dashboard");
@@ -39,9 +52,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        {/* Main Card */}
         <div className="bg-gray-800 rounded-3xl p-8 shadow-2xl border border-gray-700">
-          {/* Logo/Icon */}
           <div className="text-center mb-8">
             <div className="relative mx-auto w-24 h-24 mb-6">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl transform rotate-6"></div>
@@ -60,14 +71,12 @@ export default function LoginPage() {
             <p className="text-gray-400">Secure NFC Authentication</p>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-xl">
               <p className="text-red-300 text-sm">{error}</p>
             </div>
           )}
 
-          {/* NFC Login Button */}
           <button
             onClick={handleNFCLogin}
             disabled={isLoading}
@@ -92,7 +101,6 @@ export default function LoginPage() {
             )}
           </button>
 
-          {/* Instructions */}
           <div className="mt-8 text-center">
             <p className="text-gray-400 text-sm">
               Tap your NFC card to authenticate

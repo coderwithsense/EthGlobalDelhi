@@ -8,6 +8,7 @@ interface AuthState {
     signature: string | null;
     setAuth: (address: string, signature: string) => void;
     clearAuth: () => void;
+    rehydrate: () => void; // Added to match the store implementation
 }
 
 const useAuthStore = create<AuthState>((set) => ({
@@ -18,6 +19,20 @@ const useAuthStore = create<AuthState>((set) => ({
         set({ address, signature, isAuthenticated: true }),
     clearAuth: () =>
         set({ address: null, signature: null, isAuthenticated: false }),
+    rehydrate: () => {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+            const parsed = JSON.parse(storedUser);
+            if (parsed.address && parsed.signature) {
+                set({
+                    address: parsed.address,
+                    signature: parsed.signature,
+                    isAuthenticated: true,
+                });
+            }
+        }
+    },
 }));
+
 
 export default useAuthStore;

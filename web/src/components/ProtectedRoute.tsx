@@ -1,63 +1,39 @@
-// components/ProtectedRoute.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuthStore from "@/store/useAuthStore";
 
-interface ProtectedRouteProps {
+export default function ProtectedRoute({
+  children,
+}: {
   children: React.ReactNode;
-}
-
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+}) {
+  const { isAuthenticated, rehydrate } = useAuthStore();
   const router = useRouter();
-  const { isAuthenticated, address, signature } = useAuthStore();
-
-  const [isChecking, setIsChecking] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // Run only in client
-    if (typeof window === "undefined") return;
+    rehydrate(); // 🔄 restore from localStorage
+    setHydrated(true);
+  }, [rehydrate]);
 
-    const checkAuth = async () => {
-      try {
-        if (!isAuthenticated || !address || !signature) {
-          router.replace("/login");
-          return;
-        }
+  useEffect(() => {
+    if (hydrated && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [hydrated, isAuthenticated, router]);
 
-        // Optional: verify with backend
-        const res = await fetch("/api/user", {
-          headers: { "wallet-address": address, "wallet-signature": signature },
-        });
-
-        if (!res.ok) {
-          router.replace("/login");
-        }
-      } catch (err) {
-        console.error("Auth check failed:", err);
-        router.replace("/login");
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    checkAuth();
-  }, [isAuthenticated, address, signature, router]);
-
-  if (isChecking) {
+  if (!hydrated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-400">Authenticating...</p>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-gray-400">Loading session...</div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return null; // Redirect in progress
+    return null; // Already redirecting
   }
 
   return <>{children}</>;
