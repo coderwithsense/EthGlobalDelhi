@@ -3,9 +3,21 @@ import 'hardhat-tracer';
 import '@nomicfoundation/hardhat-chai-matchers';
 import "@nomicfoundation/hardhat-verify";
 import '@typechain/hardhat';
-import { HardhatUserConfig } from 'hardhat/config';
+import { HardhatUserConfig, vars } from 'hardhat/config';
 
 import './tasks/gen_verifier';
+import './tasks/compile';
+import './tasks/deploy';
+
+const TEST_HDWALLET = {
+  mnemonic: 'test test test test test test test test test test test junk',
+  path: "m/44'/60'/0'/0",
+  initialIndex: 0,
+  count: 20,
+  passphrase: '',
+};
+
+const accounts = process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : TEST_HDWALLET;
 
 const config: HardhatUserConfig = {
   networks: {
@@ -15,6 +27,18 @@ const config: HardhatUserConfig = {
     hardhat_local: {
       url: 'http://127.0.0.1:8545/',
     },
+    polygon_amoy: {
+      chainId: 80002,
+      url: 'https://api.zan.top/polygon-amoy',
+      /*
+      accounts: [{
+        privateKey: vars.get('HIMANSHU_TEST_KEY')
+      } as HardhatNetworkAccountUserConfig]
+      */
+      accounts: [
+        vars.get('HIMANSHU_TEST_KEY')
+      ]
+    }
   },
   solidity: {
     compilers: [
