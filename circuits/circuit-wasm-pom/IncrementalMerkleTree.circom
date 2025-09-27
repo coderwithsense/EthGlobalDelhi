@@ -27,11 +27,9 @@ template IncrementalMerkleTree(depth) {
     // Start with the leaf
     for (var i = 0; i < depth; i++) { 
         switchers[i] = Switcher();
-        switchers[i].L <== branches[i];
-        switchers[i].R <== depthHashes[i];
-        // Num2Bits places the most significant bit on the right,
-        // so we need to iterate through the path from the end
-        switchers[i].sel <== dirBitsArray.out[depth - i - 1];
+        switchers[i].L <== depthHashes[i];
+        switchers[i].R <== branches[i];
+        switchers[i].sel <== dirBitsArray.out[i]; //[depth - i - 1];
 
         hashers[i] = Poseidon(2);
         hashers[i].inputs[0] <== switchers[i].outL;

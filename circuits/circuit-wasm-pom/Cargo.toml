@@ -9,6 +9,14 @@ opt-level = 3       # Optimize for speed
 codegen-units = 1   # Better optimization, slower builds
 debug = "line-tables-only"
 
+[profile.dev]
+debug = true
+debug-assertions = true
+overflow-checks = true
+lto = false
+codegen-units = 1
+incremental = false
+
 [features]
 default = []
 rayon = [

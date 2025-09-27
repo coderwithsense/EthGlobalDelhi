@@ -36,6 +36,7 @@ contract Registry {
         bool exists;
         uint256[nFields] encryptedFields;
         uint256 treeIndex;
+        uint256 leaf;
     }
 
     Groth16Verifier internal verifier;
@@ -87,6 +88,20 @@ contract Registry {
         return encryptedInfo[secretHash].exists;
     }
 
+    function getUser(uint256 secretHash)
+        public view returns (RegInfo memory info)
+    {
+        info = encryptedInfo[secretHash];
+    }
+
+    function testNullifier(uint256 contractAddr, uint256 secret)
+        public pure returns (uint256)
+    {
+        uint256 x = Poseidon2.hash([contractAddr, secret]);
+        uint256 y = Poseidon2.hash([contractAddr, x]);
+        return y;
+    }
+
     function hashLeaf(uint256 secretHash, uint256[nFields] calldata fields)
         public pure returns (uint256 out)
     {
@@ -102,10 +117,12 @@ contract Registry {
     )
         public returns (uint256 idx)
     {
-        (idx, currentRoot) = tree.append(hashLeaf(secretHash, encryptedFields));
+        uint256 leaf = hashLeaf(secretHash, encryptedFields);
+        (idx, currentRoot) = tree.append(leaf);
         roots[currentRoot] = true;
-        encryptedInfo[secretHash] = RegInfo({
+        encryptedInfo[secretHash] = RegInfo({            
             exists: true,
+            leaf: leaf,
             encryptedFields: encryptedFields,
             treeIndex: idx
         });
@@ -146,13 +163,4 @@ contract Registry {
         pubSignals[5] = value;
         return verifier.verifyProof(proof.A, proof.B, proof.C, pubSignals);
     }
-
-    // TODO: 
-    //  - upon 'login' we get a master key for the user
-    //  - circuit upon registration
-    //      - proves data was encrypted 'properly'
-    //      - outputs blinded user identifier 
-    //  - circuit for proving eligibility
-    //      - circuit input: merkle root, encrypted fields
-    //  - 
 }

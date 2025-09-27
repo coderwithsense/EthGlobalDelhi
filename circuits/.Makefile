@@ -10,6 +10,7 @@ ARK_CWC_PROVE = $(ARK_CWC_DIR)/target/release/ark_cwc_prove
 # NOTE: use --no-opt with wasm-pack,
 #  - 'optimizing' for size makes things horribly slow
 WASMPACK_FLAGS = --release --no-opt
+#WASMPACK_FLAGS = --dev --no-opt
 
 PKG_NAME ?= circuit
 CIRCUIT_NAME = circuit

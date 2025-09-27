@@ -4,6 +4,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { poseidon } from '@iden3/js-crypto';
 import { main as wasm_main, process_string } from 'circuit-wasm-pom-nodejs';
+import { promises as fs } from 'fs';
 
 function hashSecret(secret:bigint) {
     return poseidon.hash([secret]);
@@ -36,16 +37,19 @@ function encryptFields(secret:bigint, fields:bigint[]) {
 }
 
 interface UserT {
-    idx: number,
+    treeIndex: number,
     secret: bigint,
     secretHash: bigint,
     fields: bigint[],
     fieldKeys: bigint[],
     encryptedFields: bigint[],
-    proof: bigint[] | null
+    treeProof: bigint[] | null,
+    merkleRoot: bigint | null,
+    contractAddr: bigint,
+    nullifier: bigint
 }
 
-function createUser(nFields:number) {
+function createUser(contractAddr:bigint, nFields:number) {
     const secret = poseidon.F.random();
     const secretHash = hashSecret(secret);
     const fields = [];
@@ -54,14 +58,35 @@ function createUser(nFields:number) {
     }
     const fieldKeys = makeFieldKeys(secret, nFields);
     const encryptedFields = encryptFields(secret, fields);
+
+    const rehashed = poseidon.hash([contractAddr, secret]);
+    const nullifier = poseidon.hash([contractAddr, rehashed]);
+
     return {
+        nullifier,
+        contractAddr,
         secret,
         secretHash,
         fields,
         fieldKeys,
         encryptedFields,
-        proof: null
+        treeProof: null,
+        merkleRoot: null
     } as UserT;
+}
+
+interface Groth16Proof {
+    protocol: 'groth16',
+    type: 'proof',
+    curve: 'bn128',
+    a: [string,string],
+    b: [[string,string],[string,string]],
+    c: [string,string],
+    inputs: string[]
+}
+
+function toJson(obj:any) {
+    return JSON.stringify(obj, (_, v) => typeof v === 'bigint' ? v.toString() : v)
 }
 
 describe('Registry', () => {
@@ -90,20 +115,58 @@ describe('Registry', () => {
         const r = await rf.deploy(await g.getAddress(), await e.getAddress());
         await r.waitForDeployment();
 
+        const contractAddr = 12345n;
         const users:UserT[] = [];
-        for( let i = 0; i < 3; i++ ) {
-            const u = createUser(nFields);
-            u.idx = i;
+        for( let i = 0; i < 5; i++ ) {
+            const u = createUser(contractAddr, nFields);
+            u.treeIndex = i;
             users.push(u);
-        }
+
+            const expectedNullifier = await r.testNullifier(u.contractAddr, u.secret);
+            expect(u.nullifier).eq(expectedNullifier);
+        }        
 
         for( const u of users ) {
             await r.register(u.secretHash, u.encryptedFields as any)
         }
 
         for( const u of users ) {
-            const [root, proof] = await r.getProof(u.idx);
-            u.proof = proof;
+            const [root, proof] = await r.getProof(u.treeIndex);
+            u.merkleRoot = root;
+            u.treeProof = proof;
+        }
+
+        for( const u of users )
+        {
+            const userInfo = await r.getUser(u.secretHash);
+            console.log();
+            console.log('On-chain leaf', userInfo.leaf);
+            console.log();
+
+            const proofInput = {
+                contractAddr: u.contractAddr,
+                secret: u.secret,
+                premadeLeafHash: userInfo.leaf,
+
+                merkleRoot: u.merkleRoot,
+                treeProof: u.treeProof,
+                treeIndex: u.treeIndex,
+
+                // Comparator stuff
+                value: 3n,
+                op: 2n,
+                fieldIndex: 1n,
+            };
+            const proofInputJson = toJson(proofInput);
+            //console.log('Proof Input', proofInputJson);
+            await fs.writeFile('../circuits/circuit-wasm-pom/circuit.input.json', proofInputJson);
+
+            const proofResult = JSON.parse(process_string(proofInputJson)) as Groth16Proof;
+            console.log('proof result is', proofResult.inputs);
+            console.log('User is', u);
+            console.log();
+            console.log();
+            console.log();
         }
     });
 });
