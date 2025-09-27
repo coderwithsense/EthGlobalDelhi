@@ -54,7 +54,9 @@ function DashboardContent() {
     
     // Load user info
     getUserInfo(secretHash).then((userData) => {
+      console.warn('Dashboard, secret is', secret);
       console.log('User data', userData);
+      console.log('Encrypted Fields', userData.encryptedFields)
       const decryptedFields = decryptFields(secret!, userData.encryptedFields);
       console.log('Decrypted user data', decryptedFields);
       const parsedUser = {

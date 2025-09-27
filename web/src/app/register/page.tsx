@@ -8,9 +8,10 @@ import {
   signAndSendTransaction,
   prepareTransaction,
 } from "@/lib/nfcTx/nfcService";
-import { encryptFields, prepareRegisterPayload } from "@/lib/registry";
+import { decryptFields, encryptFields, prepareRegisterPayload } from "@/lib/registry";
 import { stringToUint256 } from "@/lib/utils";
 import { RPC_URL } from "@/lib/nfcTx/config";
+import { poseidon } from "@iden3/js-crypto";
 
 interface FormData {
   name: string;
@@ -21,7 +22,7 @@ interface FormData {
   selfie: File | null;
 }
 
-interface EncryptedFields {
+interface UserDataFields {
   name: bigint;
   dateOfBirth: bigint;
   gender: bigint;
@@ -44,7 +45,6 @@ export default function RegisterPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>("");
   const [nfcAddress, setNfcAddress] = useState<string>("");
-  const [nfcSecret, setNfcSecret] = useState<bigint>(0n);
   const [registrationStep, setRegistrationStep] = useState<
     | "form"
     | "nfc"
@@ -56,7 +56,7 @@ export default function RegisterPage() {
   >("form");
   const [currentStepMessage, setCurrentStepMessage] = useState<string>("");
   const [encryptedFieldsData, setEncryptedFieldsData] =
-    useState<EncryptedFields | null>(null);
+    useState<UserDataFields | null>(null);
   const [transactionHash, setTransactionHash] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -95,7 +95,6 @@ export default function RegisterPage() {
       // Get NFC card address
       const {secret, address} = await signInWithNfc();
       setNfcAddress(address);
-      setNfcSecret(secret);
       setCurrentStepMessage(`✓ NFC card connected successfully!`);
 
       console.log("NFC Card connected. Address:", address);
@@ -113,7 +112,7 @@ export default function RegisterPage() {
     }
   };
 
-  const prepareFields = (imageUrl: string = ""): EncryptedFields => {
+  const prepareFields = (imageUrl: string = ""): UserDataFields => {
     try {
       setCurrentStepMessage("Encrypting user data for blockchain...");
 
@@ -122,7 +121,7 @@ export default function RegisterPage() {
         new Date(formData.dateOfBirth).getTime() / 1000
       );
 
-      const encryptedFields: EncryptedFields = {
+      const udf: UserDataFields = {
         name: stringToUint256(formData.name),
         dateOfBirth: BigInt(dateTimestamp),
         gender: BigInt(formData.gender),
@@ -131,10 +130,10 @@ export default function RegisterPage() {
         imageUrl: stringToUint256(imageUrl),
       };
 
-      console.log("Prepared encrypted fields:", encryptedFields);
-      setEncryptedFieldsData(encryptedFields);
+      console.log("Prepared user data fields:", udf);
+      setEncryptedFieldsData(udf);
 
-      return encryptedFields;
+      return udf;
     } catch (err: any) {
       console.error("Error preparing encrypted fields:", err);
       throw new Error("Failed to prepare registration data");
@@ -163,7 +162,7 @@ export default function RegisterPage() {
 
       // Step 1: Connect NFC card
       setCurrentStepMessage("Connecting to NFC card...");
-      const cardAddress = await connectNFC();
+      const {address: cardAddress, secret} = await signInWithNfc();
 
       // Step 2: Upload selfie if provided
       let imageUrl = "";
@@ -195,26 +194,34 @@ export default function RegisterPage() {
       setCurrentStepMessage("Preparing blockchain transaction...");
 
       // Create secret hash using user ID and card address
-      const pendingSignatureHash = localStorage.getItem(
-        "pendingUserSignature"
-      ) as string;
+      const pendingSecret = secret; /*BigInt(localStorage.getItem(
+        "pendingSecret"
+      ) as string);*/
 
       // Prepare encrypted fields
       const rawFieldsStruct = prepareFields(imageUrl);
-
-      // Convert to array format for contract
-      const encryptedFields = encryptFields(nfcSecret!, [
+      const rawFieldsArray = [
         rawFieldsStruct.name,
         rawFieldsStruct.dateOfBirth,
         rawFieldsStruct.gender,
         rawFieldsStruct.city,
         rawFieldsStruct.country,
         rawFieldsStruct.imageUrl,
-      ]);
+      ];
+
+      console.warn('Register, secret is', secret);
+      // Convert to array format for contract
+      const encryptedFields = encryptFields(secret, rawFieldsArray);
+      const decryptedFields = decryptFields(secret, encryptedFields);
+      console.warn('Raw Fields', rawFieldsArray);
+      console.warn('Encrypted Fields', encryptedFields);
+      console.warn('Decrypted fields', decryptedFields);
+
+      const pendingSecretHash = poseidon.hash([pendingSecret]);
 
       // Prepare registry transaction payload
       const registryPayload = await prepareRegisterPayload(
-        pendingSignatureHash,
+        pendingSecretHash,
         encryptedFields
       );
       setCurrentStepMessage("✓ Transaction prepared!");
@@ -270,7 +277,8 @@ export default function RegisterPage() {
         country: formData.country,
         imageUrl,
         txHash: txResponse.hash,
-        secretHash: pendingSignatureHash,
+        secret: pendingSecret,
+        secretHash: pendingSecretHash,
         encryptedFields: rawFieldsStruct,
       };
 

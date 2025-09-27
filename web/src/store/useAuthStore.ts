@@ -26,7 +26,7 @@ const useAuthStore = create<AuthState>((set) => ({
             if (parsed.address && parsed.secret) {
                 set({
                     address: parsed.address,
-                    secret: BigInt(parsed.signature),
+                    secret: BigInt(parsed.secret),
                     isAuthenticated: true,
                 });
             }

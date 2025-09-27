@@ -22,6 +22,7 @@ export default function LoginPage() {
       // Step 1: NFC Authentication
       setLoadingMessage("Authenticating with NFC...");
       const { address, secret, secretHash } = await signInWithNfc();
+      console.warn('Login, secret is', secret);
       setAuth(address, secret);
 
       // Step 2: Compute secret hash from signature
@@ -39,7 +40,7 @@ export default function LoginPage() {
       } else {
         console.log("User not found → redirect to register");
         localStorage.setItem("pendingUserId", address);
-        localStorage.setItem("pendingUserSignature", secretHash.toString());
+        localStorage.setItem("pendingSecret", secret.toString());
         setLoadingMessage("Registration required...");
         router.push("/register");
       }
