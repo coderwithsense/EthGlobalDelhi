@@ -139,9 +139,11 @@ export default function RegisterPage() {
     }
   };
 
-function toJson(obj:any) {
-    return JSON.stringify(obj, (_, v) => typeof v === 'bigint' ? v.toString() : v)
-}
+  function toJson(obj: any) {
+    return JSON.stringify(obj, (_, v) =>
+      typeof v === "bigint" ? v.toString() : v
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,8 +193,9 @@ function toJson(obj:any) {
       setCurrentStepMessage("Preparing blockchain transaction...");
 
       // Create secret hash using user ID and card address
-      const secretData = `${pendingId}-${cardAddress}`;
-      const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secretData));
+      const pendingSignatureHash = localStorage.getItem(
+        "pendingUserSignature"
+      ) as string;
 
       // Prepare encrypted fields
       const encryptedFields = prepareEncryptedFields(imageUrl);
@@ -209,7 +212,7 @@ function toJson(obj:any) {
 
       // Prepare registry transaction payload
       const registryPayload = await prepareRegisterPayload(
-        secretHash,
+        pendingSignatureHash,
         fieldsArray
       );
       setCurrentStepMessage("✓ Transaction prepared!");
@@ -265,7 +268,7 @@ function toJson(obj:any) {
         country: formData.country,
         imageUrl,
         txHash: txResponse.hash,
-        secretHash,
+        secretHash: pendingSignatureHash,
         encryptedFields: encryptedFields,
       };
 
