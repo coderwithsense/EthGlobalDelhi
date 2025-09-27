@@ -69,8 +69,7 @@ export async function prepareTransaction(address: string): Promise<TransactionLi
     return {
         to: RECIPIENT_ADDRESS,
         value: parseEther("0.000000001"),
-        nonce,
-        gasLimit: 21000,
+        nonce,        
         maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
         maxFeePerGas: feeData.maxFeePerGas,
         chainId: CHAIN_ID,

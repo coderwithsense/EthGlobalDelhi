@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ethers } from "ethers";
+import { ethers, JsonRpcProvider } from "ethers";
 import {
   getCardAddress,
   signAndSendTransaction,
@@ -10,6 +10,7 @@ import {
 } from "@/lib/nfcTx/nfcService";
 import { prepareRegisterPayload } from "@/lib/registry";
 import { stringToUint256 } from "@/lib/utils";
+import { RPC_URL } from "@/lib/nfcTx/config";
 
 interface FormData {
   name: string;
@@ -138,6 +139,10 @@ export default function RegisterPage() {
     }
   };
 
+function toJson(obj:any) {
+    return JSON.stringify(obj, (_, v) => typeof v === 'bigint' ? v.toString() : v)
+}
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -227,8 +232,11 @@ export default function RegisterPage() {
         to: registryPayload.to,
         data: registryPayload.data,
         value: 0, // No ETH transfer for registration
-        gasLimit: 300000, // Increase gas limit for contract interaction
+        //gasLimit: 300000, // Increase gas limit for contract interaction
       };
+
+      const provider = new JsonRpcProvider(RPC_URL);
+      finalTx.gasLimit = await provider.estimateGas(finalTx);
 
       console.log("Sending blockchain transaction...");
       setCurrentStepMessage("Signing transaction with NFC card...");
@@ -262,7 +270,7 @@ export default function RegisterPage() {
       };
 
       // Store user session
-      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("user", toJson(userData));
       localStorage.setItem("authenticated", "true");
       localStorage.removeItem("pendingUserId");
 
