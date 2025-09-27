@@ -4,10 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import useAuthStore from "@/store/useAuthStore";
-import { getUserInfo, getEvents } from "@/lib/registry";
-import { ethers } from "ethers";
-import { userInfo } from "os";
+import { getUserInfo, getEvents, decryptFields } from "@/lib/registry";
 import { uint256ToString } from "@/lib/utils";
+import { poseidon } from "@iden3/js-crypto";
 
 interface User {
   userId: string;
@@ -47,22 +46,25 @@ function DashboardContent() {
   const [eventsLoading, setEventsLoading] = useState(true);
   const router = useRouter();
 
-  const { address, signature, clearAuth } = useAuthStore();
+  const { address, secret, clearAuth } = useAuthStore();
 
   useEffect(() => {
-    const secretHash = ethers.keccak256(ethers.toUtf8Bytes(signature!));
+    const secretHash = poseidon.hash([secret!]);
+    //const secretHash = ethers.keccak256(ethers.toUtf8Bytes(signature!));
     
     // Load user info
     getUserInfo(secretHash).then((userData) => {
       console.log('User data', userData);
+      const decryptedFields = decryptFields(secret!, userData.encryptedFields);
+      console.log('Decrypted user data', decryptedFields);
       const parsedUser = {
         userId: address,
-        name: uint256ToString(userData.encryptedFields[0]),
-        dateOfBirth: Number(userData.encryptedFields[1]),
-        gender: Number(userData.encryptedFields[2]),
-        city: uint256ToString(userData.encryptedFields[3]),
-        country: uint256ToString(userData.encryptedFields[4]),
-        imageUrl: uint256ToString(userData.encryptedFields[5]),
+        name: uint256ToString(decryptedFields[0]),
+        dateOfBirth: Number(decryptedFields[1]),
+        gender: Number(decryptedFields[2]),
+        city: uint256ToString(decryptedFields[3]),
+        country: uint256ToString(decryptedFields[4]),
+        imageUrl: uint256ToString(decryptedFields[5]),
       } as User;
       if (parsedUser.imageUrl?.length == 0) {
         parsedUser.imageUrl = undefined;
@@ -395,7 +397,7 @@ function DashboardContent() {
                           )}
                           <p className="text-xs text-gray-500">
                             Criteria: {event.info.criteriaFieldIndex.toString() === '0' ? 'Age' : 'Field ' + event.info.criteriaFieldIndex.toString()} 
-                            {event.info.criteriaOp === 1 ? ' ≥ ' : event.info.criteriaOp === 2 ? ' ≤ ' : ' = '}
+                            {Number(event.info.criteriaOp) === 1 ? ' ≥ ' : Number(event.info.criteriaOp) === 2 ? ' ≤ ' : ' = '}
                             {event.info.criteriaValue.toString()}
                           </p>
                         </div>
@@ -406,8 +408,8 @@ function DashboardContent() {
                       <div className="mt-4">
                         <button
                           onClick={() => {
-                            // Handle registration logic here
-                            console.log('Registering for event:', event.info.eventName);
+                            // Navigate to event registration page with event data
+                            router.push(`/eventreg?eventAddress=${event.eventAddress}&eventName=${encodeURIComponent(event.info.eventName)}`);
                           }}
                           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl transition-colors duration-200 font-medium"
                         >

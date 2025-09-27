@@ -5,28 +5,28 @@ import { create } from "zustand";
 interface AuthState {
     address: string | null;
     isAuthenticated: boolean;
-    signature: string | null;
-    setAuth: (address: string, signature: string) => void;
+    secret: bigint | null;
+    setAuth: (address: string, secret: bigint) => void;
     clearAuth: () => void;
     rehydrate: () => void; // Added to match the store implementation
 }
 
 const useAuthStore = create<AuthState>((set) => ({
     address: null,
-    signature: null,
+    secret: null,
     isAuthenticated: false,
-    setAuth: (address, signature) =>
-        set({ address, signature, isAuthenticated: true }),
+    setAuth: (address, secret) =>
+        set({ address, secret, isAuthenticated: true }),
     clearAuth: () =>
-        set({ address: null, signature: null, isAuthenticated: false }),
+        set({ address: null, secret: null, isAuthenticated: false }),
     rehydrate: () => {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
             const parsed = JSON.parse(storedUser);
-            if (parsed.address && parsed.signature) {
+            if (parsed.address && parsed.secret) {
                 set({
                     address: parsed.address,
-                    signature: parsed.signature,
+                    secret: BigInt(parsed.signature),
                     isAuthenticated: true,
                 });
             }

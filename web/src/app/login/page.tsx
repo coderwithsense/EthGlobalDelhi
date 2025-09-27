@@ -21,12 +21,12 @@ export default function LoginPage() {
     try {
       // Step 1: NFC Authentication
       setLoadingMessage("Authenticating with NFC...");
-      const { address, secret } = await signInWithNfc();
+      const { address, secret, secretHash } = await signInWithNfc();
       setAuth(address, secret);
 
       // Step 2: Compute secret hash from signature
       setLoadingMessage("Checking user registration...");
-      const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secret));
+      //const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secret));
       console.log("SecretHash:", secretHash, secret);
 
       // Step 3: Query registry
@@ -39,7 +39,7 @@ export default function LoginPage() {
       } else {
         console.log("User not found → redirect to register");
         localStorage.setItem("pendingUserId", address);
-        localStorage.setItem("pendingUserSignature", secretHash);
+        localStorage.setItem("pendingUserSignature", secretHash.toString());
         setLoadingMessage("Registration required...");
         router.push("/register");
       }

@@ -1,6 +1,8 @@
 import { ethers, JsonRpcProvider, BrowserProvider, Wallet, Contract } from "ethers";
 // import registryContractABI from "./abis/Registry.json";
 import registryContractABI from "./contractABI/Registry.json";
+import eventContractABI from './contractABI/Event.json';
+import { poseidon } from '@iden3/js-crypto';
 
 // --- Configuration ---
 const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
@@ -43,6 +45,40 @@ export async function getEvents(): Promise<any> {
     return await registryContract.getEvents();
 }
 
+export async function getEvent(eventContract:string): Promise<any> {
+    const c = new Contract(eventContract, eventContractABI, provider);
+    return await c.getInfo();
+}
+
+export async function getTreeProof(leafIndex:bigint): Promise<any> {
+    return await registryContract.getProof(leafIndex);
+}
+
+function makeFieldKeys(secret:bigint, nFields:number) {
+    const fieldKeys = [];
+    for( let i = 0; i < nFields; i++ ) {
+        fieldKeys.push(poseidon.hash([secret, secret, BigInt(i)]));
+    }
+    return fieldKeys;
+}
+
+export function encryptFields(secret:bigint, fields:bigint[]) {
+    const keys = makeFieldKeys(secret, fields.length);
+    const encryptedFields = [];
+    for( let i = 0; i < fields.length; i++ ) {
+        encryptedFields.push(poseidon.F.add(fields[i], keys[i]));
+    }
+    return encryptedFields;
+}
+
+export function decryptFields(secret:bigint, fields:bigint[]) {
+    const keys = makeFieldKeys(secret, fields.length);
+    const decryptedFields = [];
+    for( let i = 0; i < fields.length; i++ ) {
+        decryptedFields.push(poseidon.F.sub(fields[i], keys[i]));
+    }
+    return decryptedFields;
+}
 
 /**
  * Prepares the transaction payload for the `register` function.

@@ -193,6 +193,13 @@ describe('Registry', () => {
 
             const proofResult = JSON.parse(process_string(proofInputJson)) as Groth16Proof;
             await fs.writeFile('../circuits/circuit-wasm-pom/circuit.test.proof.json', JSON.stringify(proofResult));
+
+            await firstEventContract.mint({
+                A: proofResult.a,
+                B: proofResult.b,
+                C: proofResult.c                
+            }, u.merkleRoot!, u.nullifier);            
+            /*
             //expect(BigInt(proofResult.inputs[0])).eq(u.nullifier);
             console.log('proof result is', proofResult.inputs);
             //console.log('User is', u);
@@ -205,20 +212,14 @@ describe('Registry', () => {
             console.log();
             console.log();
             console.log();
-
+            console.log('Event Registry is', await firstEventContract.getRegistry(), await r.getAddress());
             console.log("Call gv directly", await g.verifyProof(proofResult.a, proofResult.b, proofResult.c, proofResult.inputs));
             console.log('TS Verify Reg', await r.getAddress(), await r.isZKProofValid({
                 A: proofResult.a,
                 B: proofResult.b,
                 C: proofResult.c
-            }, u.nullifier, firstEventAddr, u.merkleRoot!, proofInput.fieldIndex, proofInput.op, proofInput.value))
-            console.log('Event Registry is', await firstEventContract.getRegistry(), await r.getAddress());
-
-            await firstEventContract.mint({
-                A: proofResult.a,
-                B: proofResult.b,
-                C: proofResult.c                
-            }, u.merkleRoot!, u.nullifier);
+            }, u.nullifier, firstEventAddr, u.merkleRoot!, proofInput.fieldIndex, proofInput.op, proofInput.value))            
+            */
         }
     });
 });

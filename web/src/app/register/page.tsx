@@ -2,13 +2,13 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ethers, JsonRpcProvider } from "ethers";
+import { JsonRpcProvider } from "ethers";
 import {
-  getCardAddress,
+  signInWithNfc,
   signAndSendTransaction,
   prepareTransaction,
 } from "@/lib/nfcTx/nfcService";
-import { prepareRegisterPayload } from "@/lib/registry";
+import { encryptFields, prepareRegisterPayload } from "@/lib/registry";
 import { stringToUint256 } from "@/lib/utils";
 import { RPC_URL } from "@/lib/nfcTx/config";
 
@@ -44,6 +44,7 @@ export default function RegisterPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>("");
   const [nfcAddress, setNfcAddress] = useState<string>("");
+  const [nfcSecret, setNfcSecret] = useState<bigint>(0n);
   const [registrationStep, setRegistrationStep] = useState<
     | "form"
     | "nfc"
@@ -92,8 +93,9 @@ export default function RegisterPage() {
       setCurrentStepMessage("Tap your NFC card on the device...");
 
       // Get NFC card address
-      const address = await getCardAddress();
+      const {secret, address} = await signInWithNfc();
       setNfcAddress(address);
+      setNfcSecret(secret);
       setCurrentStepMessage(`✓ NFC card connected successfully!`);
 
       console.log("NFC Card connected. Address:", address);
@@ -111,7 +113,7 @@ export default function RegisterPage() {
     }
   };
 
-  const prepareEncryptedFields = (imageUrl: string = ""): EncryptedFields => {
+  const prepareFields = (imageUrl: string = ""): EncryptedFields => {
     try {
       setCurrentStepMessage("Encrypting user data for blockchain...");
 
@@ -198,22 +200,22 @@ export default function RegisterPage() {
       ) as string;
 
       // Prepare encrypted fields
-      const encryptedFields = prepareEncryptedFields(imageUrl);
+      const rawFieldsStruct = prepareFields(imageUrl);
 
       // Convert to array format for contract
-      const fieldsArray = [
-        encryptedFields.name,
-        encryptedFields.dateOfBirth,
-        encryptedFields.gender,
-        encryptedFields.city,
-        encryptedFields.country,
-        encryptedFields.imageUrl,
-      ];
+      const encryptedFields = encryptFields(nfcSecret!, [
+        rawFieldsStruct.name,
+        rawFieldsStruct.dateOfBirth,
+        rawFieldsStruct.gender,
+        rawFieldsStruct.city,
+        rawFieldsStruct.country,
+        rawFieldsStruct.imageUrl,
+      ]);
 
       // Prepare registry transaction payload
       const registryPayload = await prepareRegisterPayload(
         pendingSignatureHash,
-        fieldsArray
+        encryptedFields
       );
       setCurrentStepMessage("✓ Transaction prepared!");
 
@@ -269,7 +271,7 @@ export default function RegisterPage() {
         imageUrl,
         txHash: txResponse.hash,
         secretHash: pendingSignatureHash,
-        encryptedFields: encryptedFields,
+        encryptedFields: rawFieldsStruct,
       };
 
       // Store user session

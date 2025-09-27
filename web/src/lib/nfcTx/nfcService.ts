@@ -7,16 +7,18 @@ import {
     Transaction,
     TransactionLike,
     parseEther,
-    ethers
+    ethers,
+    toBigInt
 } from "ethers";
 import { RPC_URL, CHAIN_ID, RECIPIENT_ADDRESS } from "./config";
+import { poseidon } from '@iden3/js-crypto';
 
 // 👉 Sign-in flow (static message)
 export async function signInWithNfc() {
     const info = await execHaloCmdWeb({name: 'get_key_info', keyNo: 1});
-    const secret = ethers.keccak256(ethers.getBytes('0x' + info.attestSig));
+    const secret = poseidon.F.normalize(toBigInt(ethers.keccak256(ethers.getBytes('0x' + info.attestSig))));
     const address = ethers.computeAddress('0x' + info.publicKey);
-    const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secret));
+    const secretHash = poseidon.hash([secret]);
     return {
         address,
         secret,
