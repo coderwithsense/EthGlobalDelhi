@@ -85,10 +85,6 @@ template AnonUserChecker(treeDepth, nFields) {
     nullifierHasher.inputs[1] <== rehasher.out;
     signal output nullifier;
     nullifier <== nullifierHasher.out;
-
-    // Debug the leaf hash?
-    signal output leafHash;
-    leafHash <== leafHasher.out;
 }
 
-component main {public [contractAddr,merkleRoot,fieldIndex,op,value]} = AnonUserChecker(10,4);
+component main {public [contractAddr,merkleRoot,fieldIndex,op,value]} = AnonUserChecker(10,6);

@@ -94,7 +94,7 @@ describe('Registry', () => {
         wasm_main();
     });
     it('Works?', async () => {
-        const nFields = 4;
+        const nFields = 6;
         const pf = await ethers.getContractFactory('Poseidon2');
         const p = await pf.deploy();
         await p.waitForDeployment();

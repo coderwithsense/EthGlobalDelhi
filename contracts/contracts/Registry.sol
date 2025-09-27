@@ -24,7 +24,7 @@ contract Registry {
     using IMTPoseidon for IMTPoseidon.Tree;
     uint256 constant treeDepth = IMTPoseidon_levels;
 
-    uint256 constant nFields = 4;
+    uint256 constant nFields = 6;
 
     struct ZKProof {
         uint[2] A;
