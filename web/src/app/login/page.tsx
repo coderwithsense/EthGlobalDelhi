@@ -21,14 +21,13 @@ export default function LoginPage() {
     try {
       // Step 1: NFC Authentication
       setLoadingMessage("Authenticating with NFC...");
-      const { address, signature } = await signInWithNfc();
-      setAuth(address, signature);
+      const { address, secret } = await signInWithNfc();
+      setAuth(address, secret);
 
       // Step 2: Compute secret hash from signature
       setLoadingMessage("Checking user registration...");
-      const secretHash = ethers.keccak256(ethers.toUtf8Bytes(address));
-      alert(signature);
-      console.log("SecretHash:", secretHash);
+      const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secret));
+      console.log("SecretHash:", secretHash, secret);
 
       // Step 3: Query registry
       const exists = await userExists(secretHash);

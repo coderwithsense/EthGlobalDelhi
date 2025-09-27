@@ -8,46 +8,20 @@ import {
     TransactionLike,
     parseEther,
     formatUnits,
-    hashMessage, verifyMessage
+    hashMessage, verifyMessage,
+    ethers
 } from "ethers";
 import { RPC_URL, CHAIN_ID, RECIPIENT_ADDRESS } from "./config";
 import { stringifyBigInts } from "./utils";
 
 // 👉 Sign-in flow (static message)
 export async function signInWithNfc() {
-    // Step 2: Use a constant message
-    const message = "Authenticating the user!";
-
-    // Step 3: Hash message (EIP-191 prefix handled by ethers)
-    const digest = hashMessage(message).substring(2);
-    
-    // Step 4: Ask NFC card to sign
-    const signResult = await execHaloCmdWeb({
-        name: "sign",
-        keyNo: 1,
-        digest,
-    });    
-
-    const address = signResult.etherAddress;
-
-    const signature = Signature.from({
-        r: "0x" + signResult.signature.raw.r,
-        s: "0x" + signResult.signature.raw.s,
-        v: signResult.signature.raw.v,
-    }).serialized;
-
-    alert(`Sig: ${signature} - ${JSON.stringify(signResult)}`);
-
-    // Step 5: Verify locally (optional check)
-    const recovered = verifyMessage(message, signature);
-    if (recovered.toLowerCase() !== address.toLowerCase()) {
-        throw new Error("Signature verification failed!");
-    }
-
+    const info = await execHaloCmdWeb({name: 'get_key_info', keyNo: 1});
+    const secret = ethers.keccak256(ethers.getBytes('0x' + info.attestSig));
+    const address = ethers.computeAddress('0x' + info.publicKey);
     return {
         address,
-        message,
-        signature,
+        secret,
     };
 }
 
