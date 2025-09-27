@@ -39,6 +39,10 @@ export async function getUserInfo(secretHash: bigint|string): Promise<any> {
     return await registryContract.getUser(secretHash);
 }
 
+export async function getEvents(): Promise<any> {
+    return await registryContract.getEvents();
+}
+
 
 /**
  * Prepares the transaction payload for the `register` function.

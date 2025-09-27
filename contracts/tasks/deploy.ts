@@ -12,7 +12,7 @@ interface EventInfo {
 const EXAMPLE_EVENTS:EventInfo[] = [
     {
         criteriaFieldIndex: 0n,
-        criteriaOp: 1n,
+        criteriaOp: 0n,
         criteriaValue: 18n,
         eventName: "ETH Global After Party",
         eventInfoJson: JSON.stringify({
@@ -34,7 +34,7 @@ const EXAMPLE_EVENTS:EventInfo[] = [
     },
     {
         criteriaFieldIndex: 0n,
-        criteriaOp: 1n,
+        criteriaOp: 2n,
         criteriaValue: 25n,
         eventName: "Risky Rickshaw Race",
         eventInfoJson: JSON.stringify({
