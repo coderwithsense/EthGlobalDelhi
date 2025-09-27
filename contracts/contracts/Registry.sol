@@ -65,12 +65,14 @@ contract Registry {
 
     function getEvents()
         public view
-        returns (address[] memory organizers, EventInfo[] memory infos)
+        returns (address[] memory organizers, EventInfo[] memory infos, address[] memory eventAddresses)
     {
         uint n = allEvents.length;
         organizers = new address[](n);
         infos = new EventInfo[](n);
+        eventAddresses = new address[](n);
         for( uint i = 0; i < n; i++ ) {
+            eventAddresses[i] = address(allEvents[i]);
             (organizers[i], infos[i]) = allEvents[i].getInfo();
         }
     }
@@ -161,6 +163,7 @@ contract Registry {
         pubSignals[3] = fieldIndex;
         pubSignals[4] = op;
         pubSignals[5] = value;
+
         return verifier.verifyProof(proof.A, proof.B, proof.C, pubSignals);
     }
 }

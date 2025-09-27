@@ -4,6 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import useAuthStore from "@/store/useAuthStore";
+import { getUserInfo } from "@/lib/registry";
+import { ethers } from "ethers";
+import { userInfo } from "os";
+import { uint256ToString } from "@/lib/utils";
 
 interface User {
   userId: string;
@@ -13,8 +17,6 @@ interface User {
   city: string;
   country: string;
   imageUrl?: string;
-  createdAt: number;
-  updatedAt: number;
 }
 
 function DashboardContent() {
@@ -25,12 +27,23 @@ function DashboardContent() {
   const { address, signature, clearAuth } = useAuthStore();
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      if (parsedUser.imageUrl) setUserImage(parsedUser.imageUrl);
-    }
+    const secretHash = ethers.keccak256(ethers.toUtf8Bytes(signature!));
+    getUserInfo(secretHash).then((userData) => {
+      console.log('User data', userData);
+      const parsedUser =  {
+        userId: address,
+        name: uint256ToString(userData.encryptedFields[0]),
+        dateOfBirth: Number(userData.encryptedFields[1]),
+        gender: Number(userData.encryptedFields[2]),
+        city: uint256ToString(userData.encryptedFields[3]),
+        country: uint256ToString(userData.encryptedFields[4]),
+        imageUrl: uint256ToString(userData.encryptedFields[5]),
+      } as User;
+      if( parsedUser.imageUrl?.length == 0 ) {
+        parsedUser.imageUrl = undefined;
+      }
+      setUser(parsedUser as User);
+    });    
   }, []);
 
   const handleLogout = () => {
@@ -87,7 +100,7 @@ function DashboardContent() {
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
                     <span className="text-3xl font-bold text-white">
-                      {user.name.charAt(0).toUpperCase()}
+                      {user.name.charAt(0)}
                     </span>
                   </div>
                 )}

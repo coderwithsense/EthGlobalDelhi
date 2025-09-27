@@ -199,7 +199,7 @@ export default function Home() {
       preparedTx.signature = finalSignature;
       //const finalTx = preparedTx;
       setStatusText("Sending transaction to the network...");
-      //const finalTx = Transaction.from({ ...preparedTx, ...finalSignature });
+      //const finalTx = Transaction.from({ ..aredTx, ...finalSignature });
       const finalTx = Transaction.from({
         ...preparedTx,
         signature: {
