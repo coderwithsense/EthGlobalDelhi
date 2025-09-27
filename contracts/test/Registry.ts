@@ -146,7 +146,8 @@ describe('Registry', () => {
             const proofInput = {
                 contractAddr: u.contractAddr,
                 secret: u.secret,
-                premadeLeafHash: userInfo.leaf,
+                //premadeLeafHash: userInfo.leaf,
+                fields: u.fields,
 
                 merkleRoot: u.merkleRoot,
                 treeProof: u.treeProof,
@@ -162,6 +163,7 @@ describe('Registry', () => {
             await fs.writeFile('../circuits/circuit-wasm-pom/circuit.input.json', proofInputJson);
 
             const proofResult = JSON.parse(process_string(proofInputJson)) as Groth16Proof;
+            expect(BigInt(proofResult.inputs[0])).eq(u.nullifier);
             console.log('proof result is', proofResult.inputs);
             console.log('User is', u);
             console.log();
