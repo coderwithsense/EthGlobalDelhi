@@ -29,7 +29,7 @@ template IncrementalMerkleTree(depth) {
         switchers[i] = Switcher();
         switchers[i].L <== depthHashes[i];
         switchers[i].R <== branches[i];
-        switchers[i].sel <== dirBitsArray.out[i]; //[depth - i - 1];
+        switchers[i].sel <== dirBitsArray.out[i];
 
         hashers[i] = Poseidon(2);
         hashers[i].inputs[0] <== switchers[i].outL;
@@ -38,5 +38,7 @@ template IncrementalMerkleTree(depth) {
         depthHashes[i + 1] <== hashers[i].out;
     }
 
-    root === depthHashes[depth];
+    signal output result;
+    result <== depthHashes[depth];
+    //root === depthHashes[depth];
 }

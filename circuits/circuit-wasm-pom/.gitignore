@@ -1,5 +1,5 @@
-pkg
 pkg-rayon
+pkg-nodejs
 target
 build
 log_input_signals.txt

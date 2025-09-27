@@ -1,0 +1,15 @@
+{
+  "name": "circuit-wasm-pom",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "circuit_wasm_pom_bg.wasm",
+    "circuit_wasm_pom.js",
+    "circuit_wasm_pom.d.ts"
+  ],
+  "main": "circuit_wasm_pom.js",
+  "types": "circuit_wasm_pom.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

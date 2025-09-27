@@ -1,3 +1,4 @@
 artifacts
 cache
 src
+contracts-deployed-hardhat_local.json

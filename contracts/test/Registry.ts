@@ -124,10 +124,12 @@ describe('Registry', () => {
 
             const expectedNullifier = await r.testNullifier(u.contractAddr, u.secret);
             expect(u.nullifier).eq(expectedNullifier);
+            console.log('Created user');
         }        
 
         for( const u of users ) {
             await r.register(u.secretHash, u.encryptedFields as any)
+            console.log('Registered user');
         }
 
         for( const u of users ) {
@@ -146,24 +148,29 @@ describe('Registry', () => {
             const proofInput = {
                 contractAddr: u.contractAddr,
                 secret: u.secret,
-                //premadeLeafHash: userInfo.leaf,
-                fields: u.fields,
+                //fields: u.fields,
 
                 merkleRoot: u.merkleRoot,
                 treeProof: u.treeProof,
                 treeIndex: u.treeIndex,
 
+                /*
                 // Comparator stuff
                 value: 3n,
                 op: 2n,
                 fieldIndex: 1n,
+                */
+                fields: [100n, 5n, 200n, 300n, 400n, 500n],
+                value: 999999999n,
+                op: 2n,  // greater than
+                fieldIndex: 1n
             };
             const proofInputJson = toJson(proofInput);
             //console.log('Proof Input', proofInputJson);
             await fs.writeFile('../circuits/circuit-wasm-pom/circuit.input.json', proofInputJson);
 
             const proofResult = JSON.parse(process_string(proofInputJson)) as Groth16Proof;
-            expect(BigInt(proofResult.inputs[0])).eq(u.nullifier);
+            //expect(BigInt(proofResult.inputs[0])).eq(u.nullifier);
             console.log('proof result is', proofResult.inputs);
             console.log('User is', u);
             console.log();

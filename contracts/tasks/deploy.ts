@@ -29,7 +29,7 @@ task('deploy', async (_args, hre) => {
     console.log('Poseidon2:', await p.getAddress());
     console.log('Event:', await e.getAddress());
     console.log('Groth16Verifier:', await g.getAddress());
-    fs.writeFile('contracts-deployed.json', JSON.stringify({
+    fs.writeFile(`contracts-deployed-${hre.network.name}.json`, JSON.stringify({
         'Registry': [await r.getAddress(), r.deploymentTransaction()?.hash],
         'Poseidon2': [await p.getAddress(), p.deploymentTransaction()?.hash],
         'Event': [await e.getAddress(), e.deploymentTransaction()?.hash],
