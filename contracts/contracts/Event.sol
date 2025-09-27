@@ -1,35 +1,35 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import { Registry } from './Registry.sol';
+import { Registry, IEventContract, EventInfo } from './Registry.sol';
 import { Poseidon2 } from './IMT/Poseidon2.sol';
 
-contract Event {
+contract Event is IEventContract{
     Registry internal reg;
-    uint256 public criteriaFieldIndex;
-    uint8 public criteriaOp;
-    uint256 public criteriaValue;
     bool internal isInitialized;
-    string public eventInfoJson;
+    address internal organizer;
+    EventInfo internal info;
+
+    function getInfo() public view returns (address, EventInfo memory) {
+        return (organizer, info);
+    }
 
     mapping(uint256 nullifier => bool) nullifiers;
 
-    function initialize(Registry _reg, uint256 _fieldIndex, uint8 _op, uint256 _value, string calldata _eventInfoJson)
+    function initialize(Registry in_reg, address in_organizer, EventInfo calldata in_info)
         public
     {
         require( isInitialized == false, "initialized!" );
         isInitialized = true;
-        reg = _reg;
-        criteriaFieldIndex = _fieldIndex;
-        criteriaOp = _op;
-        criteriaValue = _value;
-        eventInfoJson = _eventInfoJson;
+        organizer = in_organizer;
+        reg = in_reg;
+        info = in_info;
     }
 
     function mint(Registry.ZKProof calldata proof, uint256 merkleRoot, uint256 nullifier)
         public
     {
-        require( reg.isZKProofValid(proof, nullifier, address(this), merkleRoot, criteriaFieldIndex, criteriaOp, criteriaValue), "proof!" );
+        require( reg.isZKProofValid(proof, nullifier, address(this), merkleRoot, info.criteriaFieldIndex, info.criteriaOp, info.criteriaValue), "proof!" );
 
         nullifiers[nullifier] = true;
     }

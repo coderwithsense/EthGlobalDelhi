@@ -6,6 +6,19 @@ import {IMTPoseidon, IMTPoseidon_levels, Poseidon2} from './IMT/IMTPoseidon.sol'
 import {Groth16Verifier} from './Groth16Verifier.sol';
 import {Clones} from './Clones.sol';
 
+struct EventInfo {
+    uint256 criteriaFieldIndex;
+    uint8 criteriaOp;
+    uint256 criteriaValue;        
+    string eventName;
+    string eventInfoJson;
+}
+
+interface IEventContract {
+    function initialize(Registry in_reg, address in_organizer, EventInfo calldata in_info) external;
+    function getInfo() external view returns (address, EventInfo memory);
+}
+
 contract Registry {
 
     using IMTPoseidon for IMTPoseidon.Tree;
@@ -36,12 +49,29 @@ contract Registry {
     // secretHash maps to leaf index
     mapping(uint256 secretHash => RegInfo info) internal encryptedInfo;
 
-    constructor (Groth16Verifier in_verifier)
+    address internal eventContractTemplate;
+
+    IEventContract[] internal allEvents;
+
+    constructor (Groth16Verifier in_verifier, address in_event)
     {
+        eventContractTemplate = in_event;
         verifier = in_verifier;
         tree.namespace = keccak256(abi.encodePacked(
             block.chainid, address(this), msg.sender, block.timestamp
         ));
+    }
+
+    function getEvents()
+        public view
+        returns (address[] memory organizers, EventInfo[] memory infos)
+    {
+        uint n = allEvents.length;
+        organizers = new address[](n);
+        infos = new EventInfo[](n);
+        for( uint i = 0; i < n; i++ ) {
+            (organizers[i], infos[i]) = allEvents[i].getInfo();
+        }
     }
 
     function getProof(uint256 index)
@@ -79,6 +109,17 @@ contract Registry {
             encryptedFields: encryptedFields,
             treeIndex: idx
         });
+    }
+
+    event EventCreated(address eventAddress, string eventName);
+
+    function createEvent(EventInfo calldata in_info)
+        public returns(IEventContract result)
+    {
+        result = IEventContract(Clones.clone(eventContractTemplate, 0));
+        result.initialize(this, msg.sender, in_info);
+        emit EventCreated(address(result), in_info.eventName);
+        allEvents.push(result);
     }
 
     function isZKProofValid(
