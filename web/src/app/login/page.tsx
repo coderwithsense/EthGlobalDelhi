@@ -4,9 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuthStore from "@/store/useAuthStore";
 import { signInWithNfc } from "@/lib/nfcTx/nfcService";
+import { ethers } from "ethers";
+import { userExists } from "@/lib/registry";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -16,36 +19,61 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // 👉 Use your NFC signing flow
+      // Step 1: NFC Authentication
+      setLoadingMessage("Authenticating with NFC...");
       const { address, signature } = await signInWithNfc();
 
-      // Save in Zustand Auth store
+      // Step 2: Save auth info to Zustand store
       setAuth(address, signature);
 
-      // Create fake user data until /user API is ready
-      const fakeUser = {
-        userId: address,
-        name: "Test User",
-        dateOfBirth: 915148800, // 1999-01-01
-        gender: 0,
-        city: "Delhi",
-        country: "India",
-        createdAt: Date.now() / 1000,
-        updatedAt: Date.now() / 1000,
-        imageUrl: null,
-      };
+      // // Step 3: Create user data for localStorage
+      // const userData = {
+      //   userId: address,
+      //   address: address,
+      //   signature: signature,
+      //   name: "Test User", // This will be updated after registration or fetched from API
+      //   dateOfBirth: 915148800, // Default value
+      //   gender: 0,
+      //   city: "Delhi",
+      //   country: "India",
+      //   createdAt: Date.now() / 1000,
+      //   updatedAt: Date.now() / 1000,
+      //   imageUrl: null,
+      // };
 
-      // Persist to localStorage
-      localStorage.setItem("authenticated", "true");
-      localStorage.setItem("user", JSON.stringify(fakeUser));
+      // // Step 4: Store auth data
+      // localStorage.setItem("authenticated", "true");
+      // localStorage.setItem("user", JSON.stringify(userData));
 
-      // Redirect
-      router.push("/dashboard");
+      // Step 5: Check if user exists on chain
+      setLoadingMessage("Checking user registration...");
+
+      // Generate secret hash from address (you might want to use a different method)
+      const secretHash = ethers.keccak256(ethers.toUtf8Bytes(signature));
+
+      const exists = await userExists(secretHash);
+
+      if (exists) {
+        // User exists on chain, redirect to dashboard
+        setLoadingMessage("Login successful!");
+        router.push("/dashboard");
+      } else {
+        // User doesn't exist on chain, store pending info and redirect to register
+        localStorage.setItem("pendingUserId", address);
+        setLoadingMessage("Registration required...");
+        router.push("/register");
+      }
     } catch (err: any) {
       console.error("NFC Login Error:", err);
-      setError(err.message || "NFC authentication failed");
+      setError(err.message || "Authentication failed");
+
+      // Clear any stored auth data on error
+      localStorage.removeItem("authenticated");
+      localStorage.removeItem("user");
+      localStorage.removeItem("pendingUserId");
     } finally {
       setIsLoading(false);
+      setLoadingMessage("");
     }
   };
 
@@ -85,7 +113,7 @@ export default function LoginPage() {
             {isLoading ? (
               <div className="flex items-center justify-center space-x-3">
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                <span>Authenticating NFC...</span>
+                <span>{loadingMessage || "Processing..."}</span>
               </div>
             ) : (
               <div className="flex items-center justify-center space-x-3">
@@ -103,7 +131,9 @@ export default function LoginPage() {
 
           <div className="mt-8 text-center">
             <p className="text-gray-400 text-sm">
-              Tap your NFC card to authenticate
+              {isLoading
+                ? "Please wait while we process your request..."
+                : "Tap your NFC card to authenticate"}
             </p>
           </div>
         </div>
