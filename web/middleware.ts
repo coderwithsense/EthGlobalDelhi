@@ -48,10 +48,10 @@ export function middleware(request: NextRequest) {
         pathname.startsWith(route)
     );
 
-    // Handle X402 payment-protected routes FIRST
-    if (isPaymentProtectedRoute) {
-        return x402Middleware(request);
-    }
+    // // Handle X402 payment-protected routes FIRST
+    // if (isPaymentProtectedRoute) {
+    //     return x402Middleware(request);
+    // }
 
     // Get authentication status
     const isAuthenticated = request.headers.get('authenticated') === 'true';
