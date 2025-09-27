@@ -1,29 +1,29 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { paymentMiddleware } from 'x402-next';
+// import { paymentMiddleware } from 'x402-next';
 
-// Create the X402 payment middleware instance
-const x402Middleware = paymentMiddleware(
-    "0x07E4E4991AcB95f555bBC4b17EB92D6587a415E3", // Your receiving wallet
-    {
-        '/api/premium': {
-            price: '$0.001',
-            network: "polygon-amoy", // or "polygon" for mainnet
-            config: {
-                description: 'Access to premium API endpoint'
-            }
-        },
-        '/api/data': {
-            price: '$0.01',
-            network: "polygon-amoy",
-            config: {
-                description: 'Get protected data'
-            }
-        }
-    },
-    { url: "https://x402.polygon.technology" } // Custom facilitator for Polygon
-);
+// // Create the X402 payment middleware instance
+// const x402Middleware = paymentMiddleware(
+//     "0x07E4E4991AcB95f555bBC4b17EB92D6587a415E3", // Your receiving wallet
+//     {
+//         '/api/premium': {
+//             price: '$0.001',
+//             network: "polygon-amoy", // or "polygon" for mainnet
+//             config: {
+//                 description: 'Access to premium API endpoint'
+//             }
+//         },
+//         '/api/data': {
+//             price: '$0.01',
+//             network: "polygon-amoy",
+//             config: {
+//                 description: 'Get protected data'
+//             }
+//         }
+//     },
+//     { url: "https://x402.polygon.technology" } // Custom facilitator for Polygon
+// );
 
 export function middleware(request: NextRequest) {
     // Define protected routes for authentication
