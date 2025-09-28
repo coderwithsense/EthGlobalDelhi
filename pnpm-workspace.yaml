@@ -1,7 +1,2 @@
 packages:
   - web
-  - contracts
-  - circuits
-  - 'circuits/circuit-wasm-pom/pkg'
-  - 'circuits/circuit-wasm-pom/pkg-rayon'
-  - 'circuits/circuit-wasm-pom/pkg-nodejs'
