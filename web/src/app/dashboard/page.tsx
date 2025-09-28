@@ -4,10 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import useAuthStore from "@/store/useAuthStore";
-import { getUserInfo, getEvents, decryptFields, checkIfNullifierExists } from "@/lib/registry";
+import {
+  getUserInfo,
+  getEvents,
+  decryptFields,
+  checkIfNullifierExists,
+} from "@/lib/registry";
 import { uint256ToString } from "@/lib/utils";
 import { poseidon } from "@iden3/js-crypto";
-import QRCode from 'qrcode';
+import QRCode from "qrcode";
 
 interface User {
   userId: string;
@@ -50,7 +55,13 @@ interface QRModalProps {
   qrValue: string;
 }
 
-function QRModal({ isOpen, onClose, eventName, userName, qrValue }: QRModalProps) {
+function QRModal({
+  isOpen,
+  onClose,
+  eventName,
+  userName,
+  qrValue,
+}: QRModalProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [qrLoading, setQrLoading] = useState(true);
 
@@ -67,14 +78,14 @@ function QRModal({ isOpen, onClose, eventName, userName, qrValue }: QRModalProps
         width: 256,
         margin: 2,
         color: {
-          dark: '#000000',
-          light: '#FFFFFF',
+          dark: "#000000",
+          light: "#FFFFFF",
         },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: "M",
       });
       setQrCodeUrl(url);
     } catch (error) {
-      console.error('Error generating QR code:', error);
+      console.error("Error generating QR code:", error);
     } finally {
       setQrLoading(false);
     }
@@ -89,7 +100,7 @@ function QRModal({ isOpen, onClose, eventName, userName, qrValue }: QRModalProps
           <h3 className="text-2xl font-bold text-white mb-2">Event Entry QR</h3>
           <p className="text-gray-400 mb-2">{eventName}</p>
           <p className="text-blue-400 font-medium mb-6">{userName}</p>
-          
+
           {/* QR Code */}
           <div className="bg-white p-4 rounded-xl mb-6 inline-block">
             {qrLoading ? (
@@ -104,11 +115,11 @@ function QRModal({ isOpen, onClose, eventName, userName, qrValue }: QRModalProps
               </div>
             )}
           </div>
-          
+
           <p className="text-xs text-gray-500 mb-6 font-mono break-all">
             QR Data: {qrValue.substring(0, 16)}...
           </p>
-          
+
           <button
             onClick={onClose}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl transition-colors duration-200 font-medium"
@@ -144,11 +155,13 @@ function DashboardContent() {
     const bytes = new Uint8Array(32);
     crypto.getRandomValues(bytes);
     return Array.from(bytes)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
   };
 
-  const checkRegistrationStatus = async (eventAddress: string): Promise<boolean> => {
+  const checkRegistrationStatus = async (
+    eventAddress: string
+  ): Promise<boolean> => {
     try {
       if (!secret) return false;
       return await checkIfNullifierExists(eventAddress, secret);
@@ -161,14 +174,14 @@ function DashboardContent() {
   useEffect(() => {
     const secretHash = poseidon.hash([secret!]);
     //const secretHash = ethers.keccak256(ethers.toUtf8Bytes(signature!));
-    
+
     // Load user info
     getUserInfo(secretHash).then((userData) => {
-      console.warn('Dashboard, secret is', secret);
-      console.log('User data', userData);
-      console.log('Encrypted Fields', userData.encryptedFields)
+      console.warn("Dashboard, secret is", secret);
+      console.log("User data", userData);
+      console.log("Encrypted Fields", userData.encryptedFields);
       const decryptedFields = decryptFields(secret!, userData.encryptedFields);
-      console.log('Decrypted user data', decryptedFields);
+      console.log("Decrypted user data", decryptedFields);
       const parsedUser = {
         userId: address,
         name: uint256ToString(decryptedFields[0]),
@@ -182,82 +195,104 @@ function DashboardContent() {
         parsedUser.imageUrl = undefined;
       }
       setUser(parsedUser as User);
+      setUserImage(parsedUser.imageUrl || null);
     });
 
     // Load events
-    getEvents().then(async (eventsData) => {
-      console.log('Events data', eventsData);
-      
-      // Access the named properties from the ethers struct result
-      const organizers = eventsData.organizers;
-      const infos = eventsData.infos;
-      const eventAddresses = eventsData.eventAddresses;
-      
-      // Validate that all arrays exist and have the same length
-      if (!organizers || !infos || !eventAddresses) {
-        console.warn('Missing event data arrays:', { organizers, infos, eventAddresses });
-        setEventsLoading(false);
-        return;
-      }
-      
-      if (!Array.isArray(organizers) || !Array.isArray(infos) || !Array.isArray(eventAddresses)) {
-        console.warn('Event data is not arrays:', { organizers, infos, eventAddresses });
-        setEventsLoading(false);
-        return;
-      }
-      
-      if (organizers.length !== infos.length || organizers.length !== eventAddresses.length) {
-        console.warn('Event arrays have mismatched lengths:', {
-          organizers: organizers.length,
-          infos: infos.length,
-          eventAddresses: eventAddresses.length
-        });
-        setEventsLoading(false);
-        return;
-      }
-      
-      const parsedEvents: Event[] = organizers.map((organizer: string, index: number) => {
-        const info = infos[index];
-        let parsedInfo: ParsedEventInfo = { loc: '', desc: '', url: '' };
-        
-        try {
-          if (info && info.eventInfoJson) {
-            parsedInfo = JSON.parse(info.eventInfoJson);
-          }
-        } catch (error) {
-          console.error('Error parsing event info JSON:', error);
+    getEvents()
+      .then(async (eventsData) => {
+        console.log("Events data", eventsData);
+
+        // Access the named properties from the ethers struct result
+        const organizers = eventsData.organizers;
+        const infos = eventsData.infos;
+        const eventAddresses = eventsData.eventAddresses;
+
+        // Validate that all arrays exist and have the same length
+        if (!organizers || !infos || !eventAddresses) {
+          console.warn("Missing event data arrays:", {
+            organizers,
+            infos,
+            eventAddresses,
+          });
+          setEventsLoading(false);
+          return;
         }
 
-        return {
-          organizer,
-          info,
-          eventAddress: eventAddresses[index],
-          parsedInfo,
-          checkingRegistration: true,
-          isRegistered: false
-        };
+        if (
+          !Array.isArray(organizers) ||
+          !Array.isArray(infos) ||
+          !Array.isArray(eventAddresses)
+        ) {
+          console.warn("Event data is not arrays:", {
+            organizers,
+            infos,
+            eventAddresses,
+          });
+          setEventsLoading(false);
+          return;
+        }
+
+        if (
+          organizers.length !== infos.length ||
+          organizers.length !== eventAddresses.length
+        ) {
+          console.warn("Event arrays have mismatched lengths:", {
+            organizers: organizers.length,
+            infos: infos.length,
+            eventAddresses: eventAddresses.length,
+          });
+          setEventsLoading(false);
+          return;
+        }
+
+        const parsedEvents: Event[] = organizers.map(
+          (organizer: string, index: number) => {
+            const info = infos[index];
+            let parsedInfo: ParsedEventInfo = { loc: "", desc: "", url: "" };
+
+            try {
+              if (info && info.eventInfoJson) {
+                parsedInfo = JSON.parse(info.eventInfoJson);
+              }
+            } catch (error) {
+              console.error("Error parsing event info JSON:", error);
+            }
+
+            return {
+              organizer,
+              info,
+              eventAddress: eventAddresses[index],
+              parsedInfo,
+              checkingRegistration: true,
+              isRegistered: false,
+            };
+          }
+        );
+
+        setEvents(parsedEvents);
+
+        // Check registration status for each event
+        const updatedEvents = await Promise.all(
+          parsedEvents.map(async (event) => {
+            const isRegistered = await checkRegistrationStatus(
+              event.eventAddress
+            );
+            return {
+              ...event,
+              isRegistered,
+              checkingRegistration: false,
+            };
+          })
+        );
+
+        setEvents(updatedEvents);
+        setEventsLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error loading events:", error);
+        setEventsLoading(false);
       });
-      
-      setEvents(parsedEvents);
-
-      // Check registration status for each event
-      const updatedEvents = await Promise.all(
-        parsedEvents.map(async (event) => {
-          const isRegistered = await checkRegistrationStatus(event.eventAddress);
-          return {
-            ...event,
-            isRegistered,
-            checkingRegistration: false,
-          };
-        })
-      );
-
-      setEvents(updatedEvents);
-      setEventsLoading(false);
-    }).catch((error) => {
-      console.error('Error loading events:', error);
-      setEventsLoading(false);
-    });
   }, []);
 
   const handleLogout = () => {
@@ -290,20 +325,25 @@ function DashboardContent() {
 
   const isEligibleForEvent = (event: Event): boolean => {
     if (!user) return false;
-    
+
     // Check criteria based on criteriaFieldIndex
     // 0 = age, 1 = dateOfBirth, 2 = gender, etc.
     const criteriaFieldIndex = Number(event.info.criteriaFieldIndex);
     const criteriaOp = Number(event.info.criteriaOp); // Convert BigInt to Number
     const criteriaValue = Number(event.info.criteriaValue);
-    
+
     let userValue: number;
-    
+
     switch (criteriaFieldIndex) {
       case 0: // Age check
-        const age = Math.floor((Date.now() - (user.dateOfBirth * 1000)) / (365.25 * 24 * 60 * 60 * 1000));
+        const age = Math.floor(
+          (Date.now() - user.dateOfBirth * 1000) /
+            (365.25 * 24 * 60 * 60 * 1000)
+        );
         userValue = age;
-        console.log(`Age check: user age ${age} vs criteria ${criteriaValue}, op ${criteriaOp} (type: ${typeof criteriaOp})`);
+        console.log(
+          `Age check: user age ${age} vs criteria ${criteriaValue}, op ${criteriaOp} (type: ${typeof criteriaOp})`
+        );
         break;
       case 1: // Date of birth
         userValue = user.dateOfBirth;
@@ -314,7 +354,7 @@ function DashboardContent() {
       default:
         return false;
     }
-    
+
     // Check criteria operation
     // Based on your events: 0,0,18 (field 0, op 0, value 18), 0,1,18 (field 0, op 1, value 18), 0,2,25 (field 0, op 2, value 25)
     // It looks like: 0 = equal, 1 = greater than or equal, 2 = less than or equal
@@ -332,8 +372,12 @@ function DashboardContent() {
       default:
         result = false;
     }
-    
-    console.log(`Eligibility result: ${result} (${userValue} ${criteriaOp === 0 ? '===' : criteriaOp === 1 ? '>=' : '<='} ${criteriaValue})`);
+
+    console.log(
+      `Eligibility result: ${result} (${userValue} ${
+        criteriaOp === 0 ? "===" : criteriaOp === 1 ? ">=" : "<="
+      } ${criteriaValue})`
+    );
     return result;
   };
 
@@ -413,9 +457,14 @@ function DashboardContent() {
                     Date of Birth
                   </h3>
                   <p className="text-white">
-                    {formatDate(user.dateOfBirth)} 
+                    {formatDate(user.dateOfBirth)}
                     <span className="text-gray-400 text-sm ml-2">
-                      (Age: {Math.floor((Date.now() - (user.dateOfBirth * 1000)) / (365.25 * 24 * 60 * 60 * 1000))})
+                      (Age:{" "}
+                      {Math.floor(
+                        (Date.now() - user.dateOfBirth * 1000) /
+                          (365.25 * 24 * 60 * 60 * 1000)
+                      )}
+                      )
                     </span>
                   </p>
                 </div>
@@ -472,17 +521,18 @@ function DashboardContent() {
               {events.map((event, index) => {
                 const isEligible = isEligibleForEvent(event);
                 const isRegistered = event.isRegistered || false;
-                const checkingRegistration = event.checkingRegistration || false;
-                
+                const checkingRegistration =
+                  event.checkingRegistration || false;
+
                 return (
                   <div
                     key={index}
                     className={`p-6 rounded-2xl border transition-all duration-200 ${
                       isEligible
                         ? isRegistered
-                          ? 'bg-purple-900/20 border-purple-500/30 hover:bg-purple-900/30'
-                          : 'bg-green-900/20 border-green-500/30 hover:bg-green-900/30'
-                        : 'bg-gray-700/30 border-gray-600/30 hover:bg-gray-700/50 opacity-60'
+                          ? "bg-purple-900/20 border-purple-500/30 hover:bg-purple-900/30"
+                          : "bg-green-900/20 border-green-500/30 hover:bg-green-900/30"
+                        : "bg-gray-700/30 border-gray-600/30 hover:bg-gray-700/50 opacity-60"
                     }`}
                   >
                     <div className="mb-4">
@@ -491,39 +541,64 @@ function DashboardContent() {
                           {event.info.eventName}
                         </h3>
                         {isEligible && (
-                          <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                            isRegistered
-                              ? 'bg-purple-500 text-purple-100'
-                              : 'bg-green-500 text-green-100'
-                          }`}>
-                            {isRegistered ? 'Registered' : 'Eligible'}
+                          <span
+                            className={`text-xs px-3 py-1 rounded-full font-medium ${
+                              isRegistered
+                                ? "bg-purple-500 text-purple-100"
+                                : "bg-green-500 text-green-100"
+                            }`}
+                          >
+                            {isRegistered ? "Registered" : "Eligible"}
                           </span>
                         )}
                       </div>
-                      <p className="text-gray-300 mb-3">{event.parsedInfo.desc}</p>
-                      
+                      <p className="text-gray-300 mb-3">
+                        {event.parsedInfo.desc}
+                      </p>
+
                       <div className="flex flex-wrap gap-4 text-sm mb-2">
                         <div className="flex items-center gap-2 text-gray-400">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                           <span>{event.parsedInfo.loc}</span>
                         </div>
-                        
+
                         <div className="flex items-center gap-2 text-gray-400">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <svg
+                            className="w-4 h-4"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
                             <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
                           </svg>
                           <span className="font-mono text-xs">
-                            {event.organizer.slice(0, 6)}...{event.organizer.slice(-4)}
+                            {event.organizer.slice(0, 6)}...
+                            {event.organizer.slice(-4)}
                           </span>
                         </div>
                       </div>
-                      
+
                       {event.parsedInfo.url && (
                         <div className="flex items-center gap-2 text-sm text-blue-400">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                           <a
                             href={event.parsedInfo.url}
@@ -536,28 +611,52 @@ function DashboardContent() {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="pt-4 border-t border-gray-600/30">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {isEligible ? (
-                            <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <svg
+                              className="w-4 h-4 text-green-500"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
                             </svg>
                           ) : (
-                            <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            <svg
+                              className="w-4 h-4 text-red-500"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clipRule="evenodd"
+                              />
                             </svg>
                           )}
                           <p className="text-xs text-gray-500">
-                            Criteria: {event.info.criteriaFieldIndex.toString() === '0' ? 'Age' : 'Field ' + event.info.criteriaFieldIndex.toString()} 
-                            {Number(event.info.criteriaOp) === 1 ? ' ≥ ' : Number(event.info.criteriaOp) === 2 ? ' ≤ ' : ' = '}
+                            Criteria:{" "}
+                            {event.info.criteriaFieldIndex.toString() === "0"
+                              ? "Age"
+                              : "Field " +
+                                event.info.criteriaFieldIndex.toString()}
+                            {Number(event.info.criteriaOp) === 1
+                              ? " ≥ "
+                              : Number(event.info.criteriaOp) === 2
+                              ? " ≤ "
+                              : " = "}
                             {event.info.criteriaValue.toString()}
                           </p>
                         </div>
                       </div>
                     </div>
-                    
+
                     {isEligible && (
                       <div className="mt-4">
                         {checkingRegistration ? (
@@ -576,7 +675,13 @@ function DashboardContent() {
                           <button
                             onClick={() => {
                               // Navigate to event registration page with event data
-                              router.push(`/eventreg?eventAddress=${event.eventAddress}&eventName=${encodeURIComponent(event.info.eventName)}`);
+                              router.push(
+                                `/eventreg?eventAddress=${
+                                  event.eventAddress
+                                }&eventName=${encodeURIComponent(
+                                  event.info.eventName
+                                )}`
+                              );
                             }}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl transition-colors duration-200 font-medium"
                           >

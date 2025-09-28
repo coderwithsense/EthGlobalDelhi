@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useAuthStore from "@/store/useAuthStore";
 import { signInWithNfc } from "@/lib/nfcTx/nfcService";
-import { ethers } from "ethers";
 import { userExists } from "@/lib/registry";
+import { CreditCard } from "lucide-react";
+import Image from "next/image";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,26 +20,17 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // Step 1: NFC Authentication
       setLoadingMessage("Authenticating with NFC...");
       const { address, secret, secretHash } = await signInWithNfc();
-      console.warn('Login, secret is', secret);
       setAuth(address, secret);
 
-      // Step 2: Compute secret hash from signature
       setLoadingMessage("Checking user registration...");
-      //const secretHash = ethers.keccak256(ethers.toUtf8Bytes(secret));
-      console.log("SecretHash:", secretHash, secret);
-
-      // Step 3: Query registry
       const exists = await userExists(secretHash);
-      console.log("User exists?", exists);
 
       if (exists) {
         setLoadingMessage("Login successful!");
         router.push("/dashboard");
       } else {
-        console.log("User not found → redirect to register");
         localStorage.setItem("pendingUserId", address);
         localStorage.setItem("pendingSecret", secret.toString());
         setLoadingMessage("Registration required...");
@@ -55,27 +47,40 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        <div className="bg-gray-800 rounded-3xl p-8 shadow-2xl border border-gray-700">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome</h1>
-            <p className="text-gray-400">Secure NFC Authentication</p>
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-8 text-center">
+          {/* App Branding */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="w-14 h-14 flex items-center justify-center rounded-full bg-black text-white mb-3 shadow-md">
+              {/* <CreditCard className="w-7 h-7" /> */}
+              <Image
+                src="/logo.png"
+                alt="NFC Icon"
+                width={100}
+                height={100}
+                className="border rounded-full"
+              />
+            </div>
+            <h1 className="text-2xl font-bold text-black">AccessFi</h1>
+            <p className="text-gray-600 text-sm mt-1">
+              Welcome – Secure NFC Authentication
+            </p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-xl">
-              <p className="text-red-300 text-sm">{error}</p>
+            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-500 text-sm">{error}</p>
             </div>
           )}
 
           <button
             onClick={handleNFCLogin}
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-4 px-6 rounded-2xl transition-all"
+            className="w-full bg-black text-white font-medium py-3 px-6 rounded-xl shadow-md hover:bg-gray-900 transition-all"
           >
             {isLoading ? (
-              <div className="flex items-center justify-center space-x-3">
+              <div className="flex items-center justify-center space-x-2">
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                 <span>{loadingMessage || "Processing..."}</span>
               </div>
