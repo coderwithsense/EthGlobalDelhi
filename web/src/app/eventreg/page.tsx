@@ -45,12 +45,7 @@ function EventRegistrationContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [registrationStep, setRegistrationStep] = useState<
-    | "loading"
-    | "ready"
-    | "generating_proof"
-    | "nfc"
-    | "signing"
-    | "complete"
+    "loading" | "ready" | "generating_proof" | "nfc" | "signing" | "complete"
   >("loading");
   const [currentStepMessage, setCurrentStepMessage] = useState("");
   const [proofResult, setProofResult] = useState<ProofResult | null>(null);
@@ -114,41 +109,41 @@ function EventRegistrationContent() {
       // Get secret hash from auth store
       const secretHash = poseidon.hash([secret!]);
       //const secretHash = ethers.keccak256(ethers.toUtf8Bytes(signature!));
-      
+
       // Get user info from contract
       const userInfo = await getUserInfo(secretHash);
-      console.log('User info from contract:', userInfo);
-      
+      console.log("User info from contract:", userInfo);
+
       if (!userInfo.exists) {
         throw new Error("User not found in registry");
       }
-      
+
       setCurrentStepMessage("Fetching merkle proof...");
-      
+
       // Get merkle proof using user's tree index
       const proofData = await getTreeProof(userInfo.treeIndex);
-      console.log('Merkle proof data:', proofData);
-      
+      console.log("Merkle proof data:", proofData);
+
       const [merkleRoot, treeProof] = proofData;
-      
+
       setCurrentStepMessage("Initializing ZK proof generation...");
-      
+
       // Wait a tick to ensure we're fully in browser
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
-      if (typeof window === 'undefined') {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      if (typeof window === "undefined") {
         throw new Error("Must be in browser environment");
       }
 
-      console.log('Initializing WASM for proof generation...');
-      
+      console.log("Initializing WASM for proof generation...");
+
       // Dynamic import the WASM module
-      const wasmModule = await import('circuit-wasm-pom');
-      
+      const wasmModule = await import("../../pkg/circuit_wasm_pom");
+
       // Initialize the WASM
       await wasmModule.default();
-      
-      console.log('WASM initialized, generating proof...');
+
+      console.log("WASM initialized, generating proof...");
 
       // Construct proof input based on your unit test example
       const proofInput = {
@@ -157,7 +152,7 @@ function EventRegistrationContent() {
         merkleRoot: merkleRoot.toString(),
         treeProof: treeProof.map((p: any) => p.toString()),
         treeIndex: userInfo.treeIndex.toString(),
-        
+
         // Event criteria for the proof
         value: event!.info.criteriaValue.toString(),
         op: event!.info.criteriaOp.toString(),
@@ -166,61 +161,69 @@ function EventRegistrationContent() {
 
       const proofInputJson = JSON.stringify(proofInput);
       setCurrentStepMessage("Generating zero-knowledge proof...");
-      
+
       // Generate the proof
       const proofResultString = wasmModule.process_string(proofInputJson);
       const proof = JSON.parse(proofResultString) as ProofResult;
-      
+
       setProofResult(proof);
       setCurrentStepMessage("✓ Proof generated successfully!");
-      
-      console.log('Proof generated:', proof);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      console.log("Proof generated:", proof);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       return { proof, merkleRoot, userInfo };
     } catch (err: any) {
-      console.error('Proof generation error:', err);
+      console.error("Proof generation error:", err);
       throw new Error(`Failed to generate proof: ${err.message}`);
     }
   };
 
-  const mintEventToken = async (proofData: { proof: ProofResult, merkleRoot: any, userInfo: any }) => {
+  const mintEventToken = async (proofData: {
+    proof: ProofResult;
+    merkleRoot: any;
+    userInfo: any;
+  }) => {
     try {
       setCurrentStepMessage("Connecting to NFC card...");
-      
+
       // Get NFC card address
       const cardAddress = await getCardAddress();
       setCurrentStepMessage("✓ NFC card connected!");
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       setCurrentStepMessage("Preparing mint transaction...");
-      
+
       // Prepare the mint transaction
       const basicTx = await prepareTransaction(cardAddress);
-      
+
       const provider = new JsonRpcProvider(RPC_URL);
-      
+
       // Create contract interface for the mint function
       const eventContractABI = [
-        "function mint((uint256[2] A, uint256[2][2] B, uint256[2] C) proof, uint256 merkleRoot, uint256 nullifier)"
+        "function mint((uint256[2] A, uint256[2][2] B, uint256[2] C) proof, uint256 merkleRoot, uint256 nullifier)",
       ];
-      
-      const eventContract = new ethers.Contract(eventAddress!, eventContractABI, provider);
-      
+
+      const eventContract = new ethers.Contract(
+        eventAddress!,
+        eventContractABI,
+        provider
+      );
+
       // Generate nullifier (you might want to use a specific method for this)
       // For now, using the user's leaf as nullifier
       const nullifier = proofData.userInfo.leaf;
-      
+
       // Encode the mint function call
       const mintData = eventContract.interface.encodeFunctionData("mint", [
         {
           A: proofData.proof.a,
-          B: proofData.proof.b, 
-          C: proofData.proof.c
+          B: proofData.proof.b,
+          C: proofData.proof.c,
         },
         proofData.merkleRoot,
-        nullifier
+        nullifier,
       ]);
 
       const finalTx = {
@@ -233,18 +236,20 @@ function EventRegistrationContent() {
       // Estimate gas
       finalTx.gasLimit = await provider.estimateGas(finalTx);
 
-      setCurrentStepMessage("Please tap your NFC card to sign the transaction...");
-      
+      setCurrentStepMessage(
+        "Please tap your NFC card to sign the transaction..."
+      );
+
       const txResponse = await signAndSendTransaction(finalTx, cardAddress);
-      
+
       setTransactionHash(txResponse.hash);
       setCurrentStepMessage("✓ Registration completed successfully!");
 
       console.log("Event registration transaction:", txResponse.hash);
-      localStorage.setItem('fakedRegistrationOk', eventAddress!);
+      localStorage.setItem("fakedRegistrationOk", eventAddress!);
       return txResponse;
     } catch (err: any) {
-      console.error('Mint transaction error:', err);
+      console.error("Mint transaction error:", err);
       throw new Error(`Failed to mint event token: ${err.message}`);
     }
   };
@@ -253,22 +258,21 @@ function EventRegistrationContent() {
     try {
       setIsRegistering(true);
       setError("");
-      
+
       // Step 1: Generate proof
       setRegistrationStep("generating_proof");
       const proofData = await generateProof();
-      
+
       // Step 2: Connect NFC and mint
       setRegistrationStep("nfc");
       await mintEventToken(proofData);
-      
+
       // Step 3: Complete
       setRegistrationStep("complete");
-      
+
       // Wait a bit then redirect
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       router.push("/dashboard");
-      
     } catch (err: any) {
       console.error("Registration error:", err);
       setError(err.message || "Registration failed");
@@ -291,28 +295,39 @@ function EventRegistrationContent() {
       <div className="flex items-center justify-center space-x-4 mb-8">
         {steps.map((step, index) => {
           const isActive = step.key === registrationStep;
-          const isCompleted = steps.findIndex(s => s.key === registrationStep) > index;
-          
+          const isCompleted =
+            steps.findIndex((s) => s.key === registrationStep) > index;
+
           return (
             <div key={step.key} className="flex items-center">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                isActive 
-                  ? 'bg-blue-600 text-white animate-pulse' 
-                  : isCompleted 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-gray-600 text-gray-300'
-              }`}>
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
+                  isActive
+                    ? "bg-blue-600 text-white animate-pulse"
+                    : isCompleted
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-600 text-gray-300"
+                }`}
+              >
                 {step.icon}
               </div>
-              <span className={`ml-2 text-sm ${
-                isActive ? 'text-blue-400' : isCompleted ? 'text-green-400' : 'text-gray-400'
-              }`}>
+              <span
+                className={`ml-2 text-sm ${
+                  isActive
+                    ? "text-blue-400"
+                    : isCompleted
+                    ? "text-green-400"
+                    : "text-gray-400"
+                }`}
+              >
                 {step.label}
               </span>
               {index < steps.length - 1 && (
-                <div className={`w-8 h-0.5 mx-4 ${
-                  isCompleted ? 'bg-green-500' : 'bg-gray-600'
-                }`} />
+                <div
+                  className={`w-8 h-0.5 mx-4 ${
+                    isCompleted ? "bg-green-500" : "bg-gray-600"
+                  }`}
+                />
               )}
             </div>
           );
@@ -326,7 +341,9 @@ function EventRegistrationContent() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-400">{currentStepMessage || "Loading event..."}</p>
+          <p className="text-gray-400">
+            {currentStepMessage || "Loading event..."}
+          </p>
         </div>
       </div>
     );
@@ -355,8 +372,12 @@ function EventRegistrationContent() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Register for Event</h1>
-          <p className="text-gray-400">Complete your registration using zero-knowledge proof</p>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Register for Event
+          </h1>
+          <p className="text-gray-400">
+            Complete your registration using zero-knowledge proof
+          </p>
         </div>
 
         {/* Progress Steps */}
@@ -364,17 +385,23 @@ function EventRegistrationContent() {
 
         {/* Event Details Card */}
         <div className="bg-gray-800 rounded-3xl p-8 shadow-2xl border border-gray-700 mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">{event?.info.eventName}</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            {event?.info.eventName}
+          </h2>
           <p className="text-gray-300 mb-4">{event?.parsedInfo.desc}</p>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-gray-700/50 rounded-xl p-4">
-              <h3 className="text-sm font-medium text-gray-400 mb-1">Location</h3>
+              <h3 className="text-sm font-medium text-gray-400 mb-1">
+                Location
+              </h3>
               <p className="text-white">{event?.parsedInfo.loc}</p>
             </div>
-            
+
             <div className="bg-gray-700/50 rounded-xl p-4">
-              <h3 className="text-sm font-medium text-gray-400 mb-1">Organizer</h3>
+              <h3 className="text-sm font-medium text-gray-400 mb-1">
+                Organizer
+              </h3>
               <p className="text-white font-mono text-sm">
                 {event?.organizer.slice(0, 6)}...{event?.organizer.slice(-4)}
               </p>
@@ -396,11 +423,25 @@ function EventRegistrationContent() {
 
           <div className="pt-4 border-t border-gray-600/30">
             <div className="flex items-center gap-2 text-sm text-gray-500">
-              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              <svg
+                className="w-4 h-4 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
               </svg>
               <span>
-                Criteria: Age {Number(event?.info.criteriaOp) === 1 ? '≥' : Number(event?.info.criteriaOp) === 2 ? '≤' : '='} {event?.info.criteriaValue.toString()}
+                Criteria: Age{" "}
+                {Number(event?.info.criteriaOp) === 1
+                  ? "≥"
+                  : Number(event?.info.criteriaOp) === 2
+                  ? "≤"
+                  : "="}{" "}
+                {event?.info.criteriaValue.toString()}
               </span>
             </div>
           </div>
@@ -429,7 +470,7 @@ function EventRegistrationContent() {
           >
             Back to Dashboard
           </button>
-          
+
           {registrationStep === "ready" && (
             <button
               onClick={handleRegister}
@@ -444,9 +485,13 @@ function EventRegistrationContent() {
         {/* Transaction Hash */}
         {transactionHash && (
           <div className="mt-6 bg-green-900/20 border border-green-500/30 rounded-xl p-4">
-            <h3 className="text-green-300 font-medium mb-2">Registration Successful!</h3>
+            <h3 className="text-green-300 font-medium mb-2">
+              Registration Successful!
+            </h3>
             <p className="text-gray-300 text-sm mb-2">Transaction Hash:</p>
-            <p className="font-mono text-xs text-green-400 break-all">{transactionHash}</p>
+            <p className="font-mono text-xs text-green-400 break-all">
+              {transactionHash}
+            </p>
           </div>
         )}
       </div>
