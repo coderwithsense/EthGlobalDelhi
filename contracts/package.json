@@ -37,7 +37,6 @@
     "@types/node": "^20.11.5",
     "canonicalize": "^2.1.0",
     "chai": "^4.5.0",
-    "circuit-wasm-pom-nodejs": "workspace:*",
     "ejs": "^3.1.6",
     "hardhat": "^2.19.4",
     "hardhat-tracer": "^3.1.0",
