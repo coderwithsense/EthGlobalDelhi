@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import useAuthStore from "@/store/useAuthStore";
-import { getUserInfo, getEvents, decryptFields } from "@/lib/registry";
+import { getUserInfo, getEvents, decryptFields, checkIfNullifierExists } from "@/lib/registry";
 import { uint256ToString } from "@/lib/utils";
 import { poseidon } from "@iden3/js-crypto";
+import QRCode from 'qrcode';
 
 interface User {
   userId: string;
@@ -37,6 +38,87 @@ interface Event {
   info: EventInfo;
   eventAddress: string;
   parsedInfo: ParsedEventInfo;
+  isRegistered?: boolean;
+  checkingRegistration?: boolean;
+}
+
+interface QRModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  eventName: string;
+  userName: string;
+  qrValue: string;
+}
+
+function QRModal({ isOpen, onClose, eventName, userName, qrValue }: QRModalProps) {
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [qrLoading, setQrLoading] = useState(true);
+
+  useEffect(() => {
+    if (isOpen && qrValue) {
+      generateQRCode();
+    }
+  }, [isOpen, qrValue]);
+
+  const generateQRCode = async () => {
+    try {
+      setQrLoading(true);
+      const url = await QRCode.toDataURL(qrValue, {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+        errorCorrectionLevel: 'M'
+      });
+      setQrCodeUrl(url);
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 rounded-3xl p-8 max-w-md w-full border border-gray-700">
+        <div className="text-center">
+          <h3 className="text-2xl font-bold text-white mb-2">Event Entry QR</h3>
+          <p className="text-gray-400 mb-2">{eventName}</p>
+          <p className="text-blue-400 font-medium mb-6">{userName}</p>
+          
+          {/* QR Code */}
+          <div className="bg-white p-4 rounded-xl mb-6 inline-block">
+            {qrLoading ? (
+              <div className="w-64 h-64 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-2 border-gray-400 border-t-transparent"></div>
+              </div>
+            ) : qrCodeUrl ? (
+              <img src={qrCodeUrl} alt="QR Code" className="w-64 h-64" />
+            ) : (
+              <div className="w-64 h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                <span className="text-gray-500">Failed to generate QR</span>
+              </div>
+            )}
+          </div>
+          
+          <p className="text-xs text-gray-500 mb-6 font-mono break-all">
+            QR Data: {qrValue.substring(0, 16)}...
+          </p>
+          
+          <button
+            onClick={onClose}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl transition-colors duration-200 font-medium"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function DashboardContent() {
@@ -44,9 +126,37 @@ function DashboardContent() {
   const [userImage, setUserImage] = useState<string | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  const [qrModal, setQrModal] = useState<{
+    isOpen: boolean;
+    eventName: string;
+    qrValue: string;
+  }>({
+    isOpen: false,
+    eventName: "",
+    qrValue: "",
+  });
   const router = useRouter();
 
   const { address, secret, clearAuth } = useAuthStore();
+
+  // Generate random 32 bytes for QR code (demo purposes)
+  const generateRandomQRValue = (): string => {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  };
+
+  const checkRegistrationStatus = async (eventAddress: string): Promise<boolean> => {
+    try {
+      if (!secret) return false;
+      return await checkIfNullifierExists(eventAddress, secret);
+    } catch (error) {
+      console.error(`Error checking registration for ${eventAddress}:`, error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     const secretHash = poseidon.hash([secret!]);
@@ -75,7 +185,7 @@ function DashboardContent() {
     });
 
     // Load events
-    getEvents().then((eventsData) => {
+    getEvents().then(async (eventsData) => {
       console.log('Events data', eventsData);
       
       // Access the named properties from the ethers struct result
@@ -122,11 +232,27 @@ function DashboardContent() {
           organizer,
           info,
           eventAddress: eventAddresses[index],
-          parsedInfo
+          parsedInfo,
+          checkingRegistration: true,
+          isRegistered: false
         };
       });
       
       setEvents(parsedEvents);
+
+      // Check registration status for each event
+      const updatedEvents = await Promise.all(
+        parsedEvents.map(async (event) => {
+          const isRegistered = await checkRegistrationStatus(event.eventAddress);
+          return {
+            ...event,
+            isRegistered,
+            checkingRegistration: false,
+          };
+        })
+      );
+
+      setEvents(updatedEvents);
       setEventsLoading(false);
     }).catch((error) => {
       console.error('Error loading events:', error);
@@ -139,6 +265,23 @@ function DashboardContent() {
     localStorage.removeItem("user");
     clearAuth(); // ✅ Clear Zustand auth state
     router.push("/login");
+  };
+
+  const handleShowQR = (eventName: string) => {
+    const qrValue = generateRandomQRValue();
+    setQrModal({
+      isOpen: true,
+      eventName,
+      qrValue,
+    });
+  };
+
+  const closeQRModal = () => {
+    setQrModal({
+      isOpen: false,
+      eventName: "",
+      qrValue: "",
+    });
   };
 
   const formatDate = (timestamp: number) => {
@@ -328,12 +471,17 @@ function DashboardContent() {
             <div className="grid gap-6">
               {events.map((event, index) => {
                 const isEligible = isEligibleForEvent(event);
+                const isRegistered = event.isRegistered || false;
+                const checkingRegistration = event.checkingRegistration || false;
+                
                 return (
                   <div
                     key={index}
                     className={`p-6 rounded-2xl border transition-all duration-200 ${
                       isEligible
-                        ? 'bg-green-900/20 border-green-500/30 hover:bg-green-900/30'
+                        ? isRegistered
+                          ? 'bg-purple-900/20 border-purple-500/30 hover:bg-purple-900/30'
+                          : 'bg-green-900/20 border-green-500/30 hover:bg-green-900/30'
                         : 'bg-gray-700/30 border-gray-600/30 hover:bg-gray-700/50 opacity-60'
                     }`}
                   >
@@ -343,8 +491,12 @@ function DashboardContent() {
                           {event.info.eventName}
                         </h3>
                         {isEligible && (
-                          <span className="bg-green-500 text-green-100 text-xs px-3 py-1 rounded-full font-medium">
-                            Eligible
+                          <span className={`text-xs px-3 py-1 rounded-full font-medium ${
+                            isRegistered
+                              ? 'bg-purple-500 text-purple-100'
+                              : 'bg-green-500 text-green-100'
+                          }`}>
+                            {isRegistered ? 'Registered' : 'Eligible'}
                           </span>
                         )}
                       </div>
@@ -408,15 +560,29 @@ function DashboardContent() {
                     
                     {isEligible && (
                       <div className="mt-4">
-                        <button
-                          onClick={() => {
-                            // Navigate to event registration page with event data
-                            router.push(`/eventreg?eventAddress=${event.eventAddress}&eventName=${encodeURIComponent(event.info.eventName)}`);
-                          }}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl transition-colors duration-200 font-medium"
-                        >
-                          Register for Event
-                        </button>
+                        {checkingRegistration ? (
+                          <div className="w-full bg-gray-600 text-white py-3 px-6 rounded-xl flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                            Checking registration...
+                          </div>
+                        ) : isRegistered ? (
+                          <button
+                            onClick={() => handleShowQR(event.info.eventName)}
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-xl transition-colors duration-200 font-medium"
+                          >
+                            Show QR Code
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              // Navigate to event registration page with event data
+                              router.push(`/eventreg?eventAddress=${event.eventAddress}&eventName=${encodeURIComponent(event.info.eventName)}`);
+                            }}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl transition-colors duration-200 font-medium"
+                          >
+                            Register for Event
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -426,6 +592,15 @@ function DashboardContent() {
           )}
         </div>
       </div>
+
+      {/* QR Modal */}
+      <QRModal
+        isOpen={qrModal.isOpen}
+        onClose={closeQRModal}
+        eventName={qrModal.eventName}
+        userName={user.name}
+        qrValue={qrModal.qrValue}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { ethers, JsonRpcProvider, BrowserProvider, Wallet, Contract } from "ethers";
+import { ethers, JsonRpcProvider, BrowserProvider, Wallet, Contract, toBigInt } from "ethers";
 // import registryContractABI from "./abis/Registry.json";
 import registryContractABI from "./contractABI/Registry.json";
 import eventContractABI from './contractABI/Event.json';
@@ -78,6 +78,18 @@ export function decryptFields(secret:bigint, fields:bigint[]) {
         decryptedFields.push(poseidon.F.sub(fields[i], keys[i]));
     }
     return decryptedFields;
+}
+
+export function makeNullifier(secret:bigint, contractAddr:string) {
+    const can = toBigInt(contractAddr)
+    const rehashed = poseidon.hash([can, secret]);
+    //const nullifier = poseidon.hash([can, rehashed]);
+    //return nullifier;
+    return rehashed;
+}
+
+export async function checkIfNullifierExists(contractAddr:string, secret:bigint) {
+    return localStorage.getItem('fakedRegistrationOk')?.toLowerCase() == contractAddr.toLowerCase();
 }
 
 /**

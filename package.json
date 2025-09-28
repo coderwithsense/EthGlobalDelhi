@@ -1,4 +1,9 @@
 {
     "name": "ethglobal-2025-delhi",
-    "private": true
+    "private": true,
+    "workspaces": [
+        "web",
+        "contracts",
+        "circuits/circuit-wasm-pom/pkg"
+    ]
 }
